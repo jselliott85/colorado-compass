@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Colorado Compass</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Barlow:wght@400;500;600&family=Roboto+Slab:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  :root{
+    --bg:#F3EEE3;
+    --surface:#FFFFFF;
+    --surface-2:#EBE3D2;
+    --text:#2B2620;
+    --text-muted:#6B6355;
+    --rust:#B5502C;
+    --spruce:#375534;
+    --gold:#C6912E;
+    --border:#D8CFBC;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#1B1E1A; --surface:#242821; --surface-2:#2C3128;
+      --text:#EDE8DC; --text-muted:#A79E8C;
+      --rust:#D2703F; --spruce:#7BAE77; --gold:#E3B75E; --border:#3A3F35;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--bg); color:var(--text); font-family:'Barlow', sans-serif;}
+  .wrap{max-width:900px; margin:0 auto; padding:24px 20px 48px;}
+  header{text-align:center; padding:4px 0 18px;}
+  h1{font-family:'Roboto Slab', serif; font-weight:700; font-size:clamp(28px,5vw,42px); margin:0 0 4px;}
+  .tagline{color:var(--text-muted); font-size:16px; margin:0;}
+
+  .hud{
+    display:flex; justify-content:space-between; align-items:baseline;
+    font-family:'Barlow Condensed', sans-serif; font-size:19px; font-weight:600;
+    color:var(--text-muted); border-bottom:1px solid var(--border);
+    padding-bottom:10px; margin-bottom:18px;
+  }
+  .hud b{color:var(--text); font-weight:600;}
+  .hud .score{color:var(--rust);}
+
+  .card{background:var(--surface); border:1px solid var(--border); border-radius:6px; overflow:hidden;}
+
+  .photo-frame{position:relative; border-bottom:1px solid var(--border);}
+  #photo-map{height:280px; width:100%; background:var(--surface-2);}
+  .photo-caption{
+    position:absolute; left:14px; bottom:12px; z-index:500;
+    font-family:'Barlow Condensed', sans-serif; font-size:15px; color:#fff;
+    background:rgba(20,20,16,0.6); padding:4px 10px; border-radius:3px;
+  }
+
+  .map-area{padding:16px;}
+  .map-prompt{font-family:'Barlow Condensed', sans-serif; font-size:18px; font-weight:600; margin:0 0 10px;}
+  #guess-map{height:440px; width:100%; border:1px solid var(--border); border-radius:4px;}
+
+  .actions{display:flex; justify-content:space-between; align-items:center; margin-top:14px; gap:12px; flex-wrap:wrap;}
+  .hint{font-size:14px; color:var(--text-muted);}
+  button{
+    font-family:'Barlow Condensed', sans-serif; font-size:18px; font-weight:600;
+    padding:11px 26px; border-radius:4px; border:none; cursor:pointer;
+    background:var(--rust); color:#fff; transition:opacity 0.15s ease;
+  }
+  button:disabled{background:var(--border); color:var(--text-muted); cursor:not-allowed;}
+  button:not(:disabled):hover{opacity:0.88;}
+
+  .result{padding:20px 22px 22px; border-top:1px solid var(--border);}
+  .result-top{display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:14px; flex-wrap:wrap; gap:10px;}
+  .result-place{font-family:'Roboto Slab', serif; font-weight:700; font-size:22px; margin:0;}
+  .result-fact{color:var(--text-muted); font-size:15px; margin:4px 0 0; max-width:56ch;}
+  .result-score{text-align:right;}
+  .result-score .pts{font-family:'Roboto Slab', serif; font-size:30px; font-weight:700; color:var(--rust); line-height:1;}
+  .result-score .dist{font-size:14px; color:var(--text-muted);}
+
+  .panel{background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:36px 30px; text-align:center;}
+  .panel p{color:var(--text-muted); font-size:16px; max-width:50ch; margin:0 auto 22px; line-height:1.5;}
+  .best{font-family:'Barlow Condensed', sans-serif; font-size:16px; color:var(--text-muted); margin-top:16px;}
+
+  .breakdown{width:100%; border-collapse:collapse; margin:22px 0; text-align:left; font-size:15px;}
+  .breakdown th{font-family:'Barlow Condensed', sans-serif; font-weight:600; color:var(--text-muted); text-align:left; padding:6px 8px; border-bottom:1px solid var(--border); font-size:14px;}
+  .breakdown td{padding:7px 8px; border-bottom:1px solid var(--border);}
+  .breakdown tr:last-child td{border-bottom:none;}
+  .final-total{font-family:'Roboto Slab', serif; font-size:40px; font-weight:700; color:var(--rust); margin:6px 0 2px;}
+  .final-total-label{font-family:'Barlow Condensed', sans-serif; color:var(--text-muted); font-size:16px;}
+
+  .hidden{display:none !important;}
+  footer{text-align:center; color:var(--text-muted); font-size:13px; margin-top:22px;}
+
+  .pin-guess{width:26px; height:36px;}
+  .pin-true{width:26px; height:26px;}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Colorado Compass</h1>
+    <p class="tagline">A real satellite view from somewhere in the state. Place your pin.</p>
+  </header>
+
+  <div id="screen-start" class="panel">
+    <p>Five real aerial views, pulled at random from 40 spots across Colorado &mdash; reservoirs, ski resorts, mountain ranges, and small mountain towns among them (imagery courtesy of Esri). Click the reference map to drop your guess; the closer you land, the more points you score. 1,000 possible per round.</p>
+    <button id="btn-start">Start the round</button>
+    <div class="best" id="best-line"></div>
+  </div>
+
+  <div id="screen-game" class="hidden">
+    <div class="hud">
+      <span>Round <b id="hud-round">1</b> of 5</span>
+      <span class="score">Score: <b id="hud-score">0</b></span>
+    </div>
+
+    <div class="card">
+      <div class="photo-frame">
+        <div id="photo-map"></div>
+        <div class="photo-caption" id="photo-caption">Scene 1 of 5</div>
+      </div>
+
+      <div class="map-area">
+        <p class="map-prompt">Where in Colorado is this?</p>
+        <div id="guess-map"></div>
+        <div class="actions">
+          <span class="hint" id="map-hint">Click anywhere on the map to place a pin.</span>
+          <button id="btn-submit" disabled>Lock in guess</button>
+        </div>
+      </div>
+
+      <div class="result hidden" id="result-block">
+        <div class="result-top">
+          <div>
+            <p class="result-place" id="result-place"></p>
+            <p class="result-fact" id="result-fact"></p>
+          </div>
+          <div class="result-score">
+            <div class="pts" id="result-pts"></div>
+            <div class="dist" id="result-dist"></div>
+          </div>
+        </div>
+        <button id="btn-next">Next round</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="screen-final" class="hidden panel">
+    <div class="final-total-label">Final score</div>
+    <div class="final-total" id="final-total">0</div>
+    <div class="final-total-label">out of 5,000</div>
+    <table class="breakdown" id="final-table">
+      <thead><tr><th>Round</th><th>Location</th><th>Distance</th><th>Points</th></tr></thead>
+      <tbody id="final-tbody"></tbody>
+    </table>
+    <button id="btn-again">Play again</button>
+  </div>
+
+  <footer>Satellite imagery &copy; Esri, Maxar, Earthstar Geographics &middot; Reference map tiles &copy; Esri &middot; distances are straight-line, in miles</footer>
+</div>
+
+<script>
+(function(){
+
+  const CO_SW = [37.0, -109.05];
+  const CO_NE = [41.0, -102.05];
+  const CO_BOUNDS = L.latLngBounds(CO_SW, CO_NE);
+
+  function haversineMiles(lat1, lon1, lat2, lon2){
+    const R = 3958.8;
+    const toRad = d => d * Math.PI / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+  function scoreFor(distanceMiles){
+    return Math.max(0, Math.min(1000, Math.round(1000 * Math.exp(-distanceMiles / 55))));
+  }
+
+  const LOCATIONS = [
+    { name:"Maroon Bells", lat:39.0708, lon:-106.9890, zoom:14,
+      fact:"Near Aspen, these two 14,000-foot peaks reflected in Maroon Lake make up one of the most photographed spots in North America." },
+    { name:"Garden of the Gods", lat:38.8783, lon:-104.8719, zoom:15,
+      fact:"This free park on the west side of Colorado Springs is known for towering red sandstone fins pushed up some 300 million years ago." },
+    { name:"Great Sand Dunes National Park", lat:37.7916, lon:-105.5943, zoom:13,
+      fact:"Wind-piled sand against the Sangre de Cristo range in the San Luis Valley forms the tallest dunes in North America, some over 750 feet." },
+    { name:"Royal Gorge", lat:38.4460, lon:-105.3172, zoom:14,
+      fact:"The Arkansas River carved this canyon a thousand feet deep near Ca\u00f1on City; a suspension bridge has spanned the rim since 1929." },
+    { name:"Pikes Peak", lat:38.8409, lon:-105.0423, zoom:13,
+      fact:"The view from this 14,115-foot summit above Colorado Springs inspired the song 'America the Beautiful' in 1893." },
+    { name:"Mesa Verde National Park", lat:37.1875, lon:-108.4623, zoom:14,
+      fact:"Ancestral Puebloans built multi-story stone dwellings into these canyon alcoves between roughly 600 and 1300 CE." },
+    { name:"Red Rocks Amphitheatre", lat:39.6654, lon:-105.2057, zoom:15,
+      fact:"Two 300-foot sandstone monoliths flank this open-air venue near Morrison, in use as a concert stage since the 1930s." },
+    { name:"Downtown Denver", lat:39.7457, lon:-104.9930, zoom:15,
+      fact:"The Mile High City's skyline sits at exactly 5,280 feet, with the Rockies rising just to the west." },
+    { name:"Bear Lake, Rocky Mountain NP", lat:40.3123, lon:-105.6486, zoom:14,
+      fact:"This subalpine lake near Estes Park, ringed by spruce and jagged peaks, sits at about 9,450 feet." },
+    { name:"Colorado National Monument", lat:39.0561, lon:-108.6929, zoom:13,
+      fact:"Sheer red canyons and freestanding rock towers rise above Grand Junction along Rim Rock Drive." },
+
+    { name:"Dillon Reservoir", lat:39.6208, lon:-106.0453, zoom:13,
+      fact:"This reservoir near Frisco and Silverthorne holds Denver's drinking water, piped more than 23 miles through the mountains via the Roberts Tunnel." },
+    { name:"Gross Reservoir", lat:39.9375, lon:-105.3350, zoom:13,
+      fact:"Tucked in the foothills above Boulder, this reservoir is in the middle of a major dam-raising project to nearly double its storage capacity." },
+    { name:"Barker Reservoir", lat:39.9550, lon:-105.5060, zoom:14,
+      fact:"This small reservoir above Nederland was formed by one of the first hydroelectric dams built in Colorado, back in 1908." },
+    { name:"Boulder Reservoir", lat:40.0730, lon:-105.2280, zoom:14,
+      fact:"A popular summer spot for sailing and swimming just northeast of the city, fed by the Boulder Feeder Canal." },
+    { name:"Grand Lake", lat:40.2540, lon:-105.8230, zoom:13,
+      fact:"Colorado's largest natural lake sits at the western entrance to Rocky Mountain National Park and marks the headwaters of the Colorado River." },
+    { name:"Blue Mesa Reservoir", lat:38.4750, lon:-107.1000, zoom:12,
+      fact:"Colorado's largest body of water by volume, formed by a dam on the Gunnison River, and home to the state's biggest population of kokanee salmon." },
+    { name:"Turquoise Lake", lat:39.2830, lon:-106.4230, zoom:13,
+      fact:"A reservoir near Leadville ringed by 14,000-foot peaks, sitting at over 9,800 feet, one of the highest lakes of its size in the country." },
+
+    { name:"Vail", lat:39.6403, lon:-106.3742, zoom:13,
+      fact:"One of the largest single ski mountains in North America, its famous Back Bowls open up nearly 3,000 acres of terrain." },
+    { name:"Aspen Snowmass", lat:39.1867, lon:-106.8175, zoom:13,
+      fact:"Aspen's four mountains draw skiers from around the world, and the town's Victorian-era core dates back to a 19th-century silver boom." },
+    { name:"Breckenridge", lat:39.4817, lon:-106.0384, zoom:13,
+      fact:"Founded during an 1859 gold rush, this ski town's Peak 8 base sits at over 9,600 feet." },
+    { name:"Steamboat Springs", lat:40.4850, lon:-106.7550, zoom:13,
+      fact:"Known for 'champagne powder' snow, this ski town has sent more Winter Olympians to the Games than any other town in North America." },
+    { name:"Winter Park", lat:39.8867, lon:-105.7631, zoom:13,
+      fact:"Colorado's oldest continuously operating ski resort, reached from Denver by a scenic train route through the Moffat Tunnel." },
+    { name:"Copper Mountain", lat:39.5022, lon:-106.1497, zoom:13,
+      fact:"This resort's terrain naturally splits by difficulty from west to east, making it easy to tell beginner, intermediate, and expert runs apart from above." },
+    { name:"Keystone", lat:39.6084, lon:-105.9438, zoom:13,
+      fact:"One of the few Colorado resorts with regular night skiing, spread across three interconnected mountains near Dillon Reservoir." },
+
+    { name:"Longs Peak", lat:40.2549, lon:-105.6151, zoom:12,
+      fact:"The northernmost 14,000-foot peak in the Rockies and the tallest in Rocky Mountain National Park, with a distinctive flat summit." },
+    { name:"Collegiate Peaks", lat:38.9244, lon:-106.3206, zoom:11,
+      fact:"A cluster of 14,000-foot summits near Buena Vista named after Ivy League schools, including Harvard, Yale, Princeton, and Columbia." },
+    { name:"Mount Elbert", lat:39.1178, lon:-106.4453, zoom:12,
+      fact:"At 14,440 feet, this is the highest point in Colorado and the second-highest peak in the contiguous United States." },
+    { name:"Mount Evans", lat:39.5883, lon:-105.6438, zoom:12,
+      fact:"Home to the highest paved road in North America, climbing to just over 14,000 feet above sea level." },
+    { name:"San Juan Mountains", lat:37.8950, lon:-107.7050, zoom:11,
+      fact:"One of the most rugged ranges in the Rockies, this pocket near Silverton is laced with old mining roads and steep, jagged peaks." },
+    { name:"Gore Range", lat:39.6900, lon:-106.3000, zoom:11,
+      fact:"A jagged, less-visited range east of Vail and Silverthorne, named for an Irish nobleman who led an infamous 1850s hunting expedition through the area." },
+    { name:"Sawatch Range", lat:39.1875, lon:-106.4759, zoom:11,
+      fact:"Home to more 14,000-foot peaks than any other range in Colorado, including Mount Elbert and Mount Massive." },
+    { name:"Flat Tops Wilderness", lat:39.9200, lon:-107.2000, zoom:11,
+      fact:"Named for its distinctive lava-capped plateaus, this range between Steamboat and Glenwood Springs was one of the first areas ever protected for wilderness study, back in 1919." },
+
+    { name:"Crested Butte", lat:38.8697, lon:-106.9878, zoom:14,
+      fact:"Once a coal mining town, it's now known as Colorado's wildflower capital and a hub for extreme mountain biking." },
+    { name:"Telluride", lat:37.9375, lon:-107.8123, zoom:14,
+      fact:"This former mining town sits in a box canyon so remote that its ski area is reached by a free gondola instead of a road through downtown." },
+    { name:"Silverton", lat:37.8119, lon:-107.6650, zoom:14,
+      fact:"A former silver-mining boomtown at over 9,300 feet, it's the northern terminus of the historic Durango and Silverton narrow-gauge railroad." },
+    { name:"Ouray", lat:38.0233, lon:-107.6714, zoom:14,
+      fact:"Known as the 'Switzerland of America' for the steep peaks surrounding its tiny downtown, and home to a famous hot springs pool." },
+    { name:"Leadville", lat:39.2508, lon:-106.2925, zoom:14,
+      fact:"At 10,152 feet, this is the highest incorporated city in the United States, and once one of the richest silver-mining towns in the world." },
+    { name:"Salida", lat:38.5347, lon:-105.9997, zoom:14,
+      fact:"Sitting along the Arkansas River, this town has the largest historic downtown district in Colorado." },
+    { name:"Buena Vista", lat:38.8422, lon:-106.1311, zoom:14,
+      fact:"A gateway to the Collegiate Peaks and a major put-in point for rafting the Arkansas River." },
+    { name:"Georgetown", lat:39.7047, lon:-105.6969, zoom:14,
+      fact:"A well-preserved 1870s silver-mining town, connected to nearby Silver Plume by a narrow-gauge loop railroad with a dramatic high bridge." }
+  ];
+
+  function guessIcon(){
+    return L.divIcon({
+      className:'', iconSize:[26,36], iconAnchor:[13,36],
+      html:`<svg class="pin-guess" viewBox="0 0 26 36" xmlns="http://www.w3.org/2000/svg">
+        <path d="M13,36 C13,22 1,20 1,13 C1,6 6.4,0 13,0 C19.6,0 25,6 25,13 C25,20 13,22 13,36 Z" fill="#B5502C" stroke="#fff" stroke-width="1.5"/>
+        <circle cx="13" cy="13" r="5" fill="#fff"/></svg>`
+    });
+  }
+  function trueIcon(){
+    return L.divIcon({
+      className:'', iconSize:[26,26], iconAnchor:[13,13],
+      html:`<svg class="pin-true" viewBox="0 0 26 26" xmlns="http://www.w3.org/2000/svg">
+        <path d="M13,1 L16,10 L26,10 L18,16 L21,26 L13,20 L5,26 L8,16 L0,10 L10,10 Z" fill="#375534" stroke="#fff" stroke-width="1.5"/></svg>`
+    });
+  }
+
+  let order = [], round = 0, score = 0, results = [];
+  let guessMap, photoMap, guessLayer, guessLatLon = null;
+
+  const el = id => document.getElementById(id);
+
+  function loadBest(){
+    try{
+      const v = localStorage.getItem('coCompassBest');
+      if(v){ el('best-line').textContent = 'Your best so far: ' + v + ' / 5,000'; }
+    }catch(e){}
+  }
+  function saveBest(total){
+    try{
+      const prev = parseInt(localStorage.getItem('coCompassBest') || '0', 10);
+      if(total > prev){ localStorage.setItem('coCompassBest', String(total)); }
+    }catch(e){}
+  }
+
+  function shuffledIndices(n){
+    const arr = Array.from({length:n}, (_,i)=>i);
+    for(let i=arr.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [arr[i],arr[j]]=[arr[j],arr[i]];
+    }
+    return arr;
+  }
+
+  function initGuessMap(){
+    if(guessMap) return;
+    guessMap = L.map('guess-map', {
+      maxBounds: CO_BOUNDS.pad(0.06),
+      maxBoundsViscosity: 1.0,
+      minZoom: 6,
+      maxZoom: 13
+    });
+    guessMap.fitBounds(CO_BOUNDS, {padding:[6,6]});
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
+      maxZoom: 13
+    }).addTo(guessMap);
+    L.rectangle([CO_SW, CO_NE], {color:'#B5502C', weight:2, fill:false, dashArray:'4,4'}).addTo(guessMap);
+    guessLayer = L.layerGroup().addTo(guessMap);
+
+    guessMap.on('click', function(e){
+      if(!el('result-block').classList.contains('hidden')) return;
+      guessLatLon = e.latlng;
+      guessLayer.clearLayers();
+      L.marker(guessLatLon, {icon: guessIcon()}).addTo(guessLayer);
+      el('btn-submit').disabled = false;
+      el('map-hint').textContent = 'Pin placed \u2014 click again to move it, or lock it in.';
+    });
+  }
+
+  function buildPhotoMap(loc){
+    if(photoMap){ photoMap.remove(); photoMap = null; }
+    photoMap = L.map('photo-map', {
+      center: [loc.lat, loc.lon],
+      zoom: loc.zoom,
+      dragging: false, zoomControl: false, scrollWheelZoom: false,
+      doubleClickZoom: false, boxZoom: false, keyboard: false, touchZoom: false,
+      attributionControl: true
+    });
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Imagery &copy; Esri',
+      maxZoom: 18
+    }).addTo(photoMap);
+  }
+
+  function startGame(){
+    order = shuffledIndices(LOCATIONS.length).slice(0,5);
+    round = 0; score = 0; results = [];
+    el('screen-start').classList.add('hidden');
+    el('screen-final').classList.add('hidden');
+    el('screen-game').classList.remove('hidden');
+    initGuessMap();
+    setTimeout(startRound, 30); // let layout settle before Leaflet measures itself
+  }
+
+  function startRound(){
+    guessLatLon = null;
+    const loc = LOCATIONS[order[round]];
+    el('hud-round').textContent = String(round+1);
+    el('hud-score').textContent = String(score);
+    el('photo-caption').textContent = 'Scene ' + (round+1) + ' of 5';
+    el('map-hint').textContent = 'Click anywhere on the map to place a pin.';
+    el('btn-submit').disabled = true;
+    el('result-block').classList.add('hidden');
+    guessLayer.clearLayers();
+    guessMap.fitBounds(CO_BOUNDS, {padding:[6,6]});
+    buildPhotoMap(loc);
+    setTimeout(()=>{ guessMap.invalidateSize(); photoMap.invalidateSize(); }, 30);
+  }
+
+  function submitGuess(){
+    if(!guessLatLon) return;
+    const loc = LOCATIONS[order[round]];
+    const dist = haversineMiles(guessLatLon.lat, guessLatLon.lng, loc.lat, loc.lon);
+    const pts = scoreFor(dist);
+    score += pts;
+    results.push({name: loc.name, dist, pts});
+
+    const trueLatLng = L.latLng(loc.lat, loc.lon);
+    L.marker(trueLatLng, {icon: trueIcon()}).addTo(guessLayer);
+    L.polyline([guessLatLon, trueLatLng], {color:'#B5502C', weight:2, dashArray:'5,4'}).addTo(guessLayer);
+    guessMap.fitBounds(L.latLngBounds([guessLatLon, trueLatLng]).pad(0.6), {maxZoom:10});
+
+    el('result-place').textContent = loc.name;
+    el('result-fact').textContent = loc.fact;
+    el('result-pts').textContent = '+' + pts;
+    el('result-dist').textContent = dist.toFixed(1) + ' miles off';
+    el('result-block').classList.remove('hidden');
+    el('hud-score').textContent = String(score);
+    el('btn-next').textContent = (round >= 4) ? 'See final score' : 'Next round';
+  }
+
+  function nextRound(){
+    round++;
+    if(round >= 5){ showFinal(); } else { startRound(); }
+  }
+
+  function showFinal(){
+    el('screen-game').classList.add('hidden');
+    el('screen-final').classList.remove('hidden');
+    el('final-total').textContent = String(score);
+    saveBest(score);
+    const tbody = el('final-tbody');
+    tbody.innerHTML = '';
+    results.forEach((r,i)=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${i+1}</td><td>${r.name}</td><td>${r.dist.toFixed(1)} mi</td><td>${r.pts}</td>`;
+      tbody.appendChild(tr);
+    });
+    loadBest();
+  }
+
+  el('btn-start').addEventListener('click', startGame);
+  el('btn-submit').addEventListener('click', submitGuess);
+  el('btn-next').addEventListener('click', nextRound);
+  el('btn-again').addEventListener('click', startGame);
+
+  loadBest();
+})();
+</script>
+</body>
+</html>
