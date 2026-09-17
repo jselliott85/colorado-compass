@@ -124,6 +124,15 @@ straight append:
   positioned so Ward sits near the northeast corner and Nederland near the southeast — both real
   towns, coordinates confirmed via Nominatim rather than eyeballing satellite imagery for once,
   since they're small enough to be easy to miss by eye at this zoom.
+- **Leadville got a cloudy Esri capture too** — same USGS `loc.tiles` fix as the others. The
+  accompanying "maybe 5% more zoom" request exposed a real gap: `loc.zoom` is passed straight to
+  Leaflet's `L.map` constructor, and without `zoomSnap` set, Leaflet defaults to snapping zoom to
+  whole integers — a fractional value like `13.1` would've silently rounded down to `13`, making
+  a small zoom nudge impossible. Added `zoomSnap: 0` to the photo map's options (`buildPhotoMap()`
+  in `index.html`) so fractional `zoom` values on any location now take effect exactly as
+  written; confirmed via `map.getZoom()` in a standalone test. Only the fixed, non-interactive
+  photo map needed this — the interactive guess map is untouched and still snaps to whole zooms,
+  which is fine since nothing asks it to do otherwise.
 
 ## Location image audit
 

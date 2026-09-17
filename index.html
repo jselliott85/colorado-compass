@@ -421,7 +421,8 @@
       fact:"A former silver-mining boomtown at over 9,300 feet, it's the northern terminus of the historic Durango and Silverton narrow-gauge railroad." },
     { name:"Ouray", lat:38.0233, lon:-107.6714, zoom:14,
       fact:"Known as the 'Switzerland of America' for the steep peaks surrounding its tiny downtown, and home to a famous hot springs pool." },
-    { name:"Leadville", lat:39.2508, lon:-106.2925, zoom:13,
+    { name:"Leadville", lat:39.2508, lon:-106.2925, zoom:13.1,
+      tiles:{ url:'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}', attribution:'Imagery &copy; USGS The National Map' },
       fact:"At 10,152 feet, this is the highest incorporated city in the United States, and once one of the richest silver-mining towns in the world." },
     { name:"Salida", lat:38.5347, lon:-105.9997, zoom:14,
       fact:"Sitting along the Arkansas River, this town has the largest historic downtown district in Colorado." },
@@ -521,6 +522,7 @@
     photoMap = L.map('photo-map', {
       center: [loc.lat, loc.lon],
       zoom: loc.zoom,
+      zoomSnap: 0,
       dragging: false, zoomControl: false, scrollWheelZoom: false,
       doubleClickZoom: false, boxZoom: false, keyboard: false, touchZoom: false,
       attributionControl: true
