@@ -102,6 +102,18 @@ straight append:
   visitor-center building and road are actually visible. **Barker Reservoir** was pinned at the
   reservoir's edge instead of open water; recentered on the water body itself. **St. Elmo** was
   about 500m south of the actual townsite; recentered north onto the cluster of buildings.
+- **Hanging Lake was ~2.8km off:** resolved a shared Google Maps link (`maps.app.goo.gl`, which —
+  unlike the `share.google` short links used elsewhere in this round of feedback — redirects to a
+  URL with the place's actual lat/lon embedded in it, no geocoding needed) to get the real
+  coordinates. The lake itself is tiny and mostly hidden under tree canopy, so it also needed a
+  much tighter zoom than anything else in the pool (18, vs. 13–15 for everything else) before it
+  was visible in the photo at all.
+- **Four ski resort framings adjusted**, all found during the audit — pure pan/zoom tweaks, no
+  coordinate errors: **Vail** shifted south so I-70 sits near the top of frame with the full trail
+  network below it instead of cutting it off; **Keystone** recentered and zoomed 13→14 onto the
+  trail network, which was small and off to one side; **Winter Park** shifted south to bring the
+  southern runs into frame at the same zoom; **Eldora** zoomed 13→14 for a closer view of the
+  trail fan.
 
 ## Location image audit
 
