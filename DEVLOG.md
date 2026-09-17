@@ -95,12 +95,15 @@ patch digit, just bump the number for each batch of shipped changes; reserve a j
 something that actually feels like a different game (e.g. a real backend, multiplayer).
 
 Shown in-page as a collapsed `<details class="release-info">` block between the start panel and
-the footer (visible on every screen, since it isn't inside any of the hidden screen divs). History
-so far: v1.0 original game, v1.1 Lee Hill Labs rebrand, v1.2 location pool expansion to 65 spots.
+the footer (visible on every screen, since it isn't inside any of the hidden screen divs). Shows
+**only the latest version's notes** — no expandable history tree, by design (kept simple on
+purpose). History so far: v1.0 original game, v1.1 Lee Hill Labs rebrand, v1.2 location pool
+expansion to 65 spots.
 
 This is a player-facing changelog (what changed), separate from this dev log (why it changed).
 When shipping a future user-visible change, bump the version in two places: the `<summary>` text
-and a new `.release-entry` block at the top of the list in `index.html`.
+and the `.release-list` items inside `<details class="release-info">` in `index.html` — replace
+the old notes rather than appending to them.
 
 ## Deployment
 
