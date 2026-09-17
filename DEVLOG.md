@@ -85,14 +85,23 @@ straight append:
   USGS's `USGSImageryOnly` service (`basemap.nationalmap.gov`) instead — public-domain U.S.
   government imagery, uses the same `{z}/{y}/{x}` tile scheme Leaflet already expects, and has no
   seam at that location. Credited separately in the footer attribution line.
-- **Royal Gorge's cloud cover, Bear Lake's imagery seam:** both found during the image-audit pass
-  (see below). Royal Gorge had a persistent cloud bank obscuring the canyon; Bear Lake had the
-  same kind of Esri mosaic seam as Wolf Creek (a hard vertical line between two different capture
-  dates). Both fixed the same way: a `loc.tiles` override to USGS `USGSImageryOnly`, which is
-  clean at both locations. Wolf Creek, Royal Gorge, and Bear Lake are currently the only three
-  locations using a non-default imagery source; everything else still uses Esri.
+- **Royal Gorge's cloud cover, Bear Lake's and St. Elmo's imagery quality:** all found during the
+  image-audit pass (see below). Royal Gorge had a persistent cloud bank obscuring the canyon; Bear
+  Lake had the same kind of Esri mosaic seam as Wolf Creek (a hard vertical line between two
+  different capture dates); St. Elmo's Esri capture was a grainy, low-contrast winter/snow image
+  that obscured the townsite. All three fixed the same way: a `loc.tiles` override to USGS
+  `USGSImageryOnly`, which is clean at all three. Wolf Creek, Royal Gorge, Bear Lake, and St. Elmo
+  are currently the only locations using a non-default imagery source; everything else still uses
+  Esri.
 - **Mesa Verde zoomed out:** was zoom 14 (too tight on one canyon), dropped to zoom 13 to show
   more of the surrounding mesa fingers — also found during the image-audit pass.
+- **Three locations recentered on bad coordinates:** also found during the audit —
+  **Trail Ridge Road Visitor Center** was pinned about 5km from the real Alpine Visitor Center
+  (verified against Nominatim/OpenStreetMap's geocoder rather than guessing again); renamed to
+  **"Trail Ridge Road: Alpine Visitor Center"** to match, and zoomed in from 13 to 15 so the
+  visitor-center building and road are actually visible. **Barker Reservoir** was pinned at the
+  reservoir's edge instead of open water; recentered on the water body itself. **St. Elmo** was
+  about 500m south of the actual townsite; recentered north onto the cluster of buildings.
 
 ## Location image audit
 
