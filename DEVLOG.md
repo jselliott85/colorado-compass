@@ -40,10 +40,10 @@ the game draws 5 locations per game from a curated pool, randomly ordered. The p
 since the original 40; homepage copy deliberately says "famous spots" rather than citing a count,
 so it doesn't go stale as the pool changes.
 
-Current pool (65 locations):
+Current pool (64 locations):
 
 - 13 landmarks/parks
-- 9 bodies of water
+- 8 bodies of water
 - 16 ski resorts
 - 12 mountain ranges/peaks
 - 10 mountain towns
@@ -102,12 +102,13 @@ straight append:
   visitor-center building and road are actually visible. **Barker Reservoir** was pinned at the
   reservoir's edge instead of open water; recentered on the water body itself. **St. Elmo** was
   about 500m south of the actual townsite; recentered north onto the cluster of buildings.
-- **Hanging Lake was ~2.8km off:** resolved a shared Google Maps link (`maps.app.goo.gl`, which —
-  unlike the `share.google` short links used elsewhere in this round of feedback — redirects to a
-  URL with the place's actual lat/lon embedded in it, no geocoding needed) to get the real
-  coordinates. The lake itself is tiny and mostly hidden under tree canopy, so it also needed a
-  much tighter zoom than anything else in the pool (18, vs. 13–15 for everything else) before it
-  was visible in the photo at all.
+- **Hanging Lake removed from the pool entirely.** Initially just recentered (was ~2.8km off —
+  resolved a shared Google Maps link, `maps.app.goo.gl`, which unlike the `share.google` short
+  links used elsewhere in this feedback round redirects to a URL with the place's actual lat/lon
+  embedded in it) and zoomed to 18, tighter than anything else in the pool, to compensate for how
+  tiny and tree-covered the lake is. Even corrected, it was still too small and blurry to read as
+  a fair round — cut rather than keep chasing a zoom level that might not exist. Pool count is 64,
+  not 65, as a result.
 - **Four ski resort framings adjusted**, all found during the audit — pure pan/zoom tweaks, no
   coordinate errors: **Vail** shifted south so I-70 sits near the top of frame with the full trail
   network below it instead of cutting it off; **Keystone** recentered and zoomed 13→14 onto the
