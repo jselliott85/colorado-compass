@@ -17,6 +17,20 @@
 <meta name="twitter:title" content="Colorado Compass">
 <meta name="twitter:description" content="How well do you know Colorado? View a satellite photo from somewhere in the state and place your pin.">
 <meta name="twitter:image" content="https://cocompass.leehilllabs.com/assets/og-image.png">
+<!-- Google tag (gtag.js) -->
+<script>
+  try{
+    window['ga-disable-G-NMP21XF9R0'] = localStorage.getItem('coCompassAnalyticsDisabled') === '1';
+  }catch(e){}
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-NMP21XF9R0', {
+    allow_google_signals: false,
+    allow_ad_personalization_signals: false
+  });
+</script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-NMP21XF9R0"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -119,6 +133,15 @@
   .site-footer{background:var(--surface-2); border-top:1px solid var(--border); margin-top:32px; padding:24px 20px;}
   .footer-inner{max-width:900px; margin:0 auto; display:flex; flex-direction:column; align-items:center; gap:14px; text-align:center;}
   .attribution{color:var(--text-muted); font-size:13px; margin:0; line-height:1.5;}
+  .analytics-disclosure{max-width:700px; color:var(--text-muted); font-size:12px; margin:0; line-height:1.55;}
+  .analytics-disclosure a{color:inherit;}
+  .analytics-toggle{
+    display:inline; margin:0 0 0 4px; padding:0; border:0; border-radius:0;
+    background:transparent; color:var(--spruce); font-size:12px; font-weight:600;
+    text-decoration:underline; text-underline-offset:2px;
+  }
+  .analytics-toggle:not(:disabled):hover{background:transparent; color:var(--spruce-hover); transform:none;}
+  .analytics-toggle:focus-visible{outline:2px solid var(--spruce); outline-offset:3px;}
   .lhl-credit{display:inline-flex; align-items:center; gap:10px; text-decoration:none; color:var(--text-muted); font-size:13px; font-weight:600; transition:color .15s ease;}
   .lhl-credit:hover{color:var(--spruce);}
   .lhl-logo{height:26px; width:auto; display:block;}
@@ -206,6 +229,7 @@
 <footer class="site-footer">
   <div class="footer-inner">
     <p class="attribution">Satellite imagery &copy; Esri, Maxar, Earthstar Geographics, and USGS The National Map &middot; Reference map tiles &copy; Esri &middot; distances are straight-line, in miles</p>
+    <p class="analytics-disclosure">We use Google Analytics to understand visits and gameplay, including rounds, scores, distances, and timing. We don't send names, contact information, or guess and target coordinates, and we don't use analytics for advertising or remarketing. <a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noreferrer">How Google uses this data</a>. Control analytics for this browser:<button class="analytics-toggle" id="analytics-toggle" type="button">Disable analytics</button></p>
     <a class="lhl-credit" href="https://leehilllabs.com" target="_blank" rel="noreferrer">
       <img class="lhl-logo" src="assets/lhl-logo.png" alt="Lee Hill Labs" width="158" height="140">
       <span>Created by Lee Hill Labs, Inc.</span>
@@ -219,6 +243,55 @@
   const CO_SW = [37.0, -109.05];
   const CO_NE = [41.0, -102.05];
   const CO_BOUNDS = L.latLngBounds(CO_SW, CO_NE);
+  const GAME_VERSION = '1.2.1';
+  const ROUNDS_PER_GAME = 5;
+  const GA_MEASUREMENT_ID = 'G-NMP21XF9R0';
+  const ANALYTICS_STORAGE_KEY = 'coCompassAnalyticsDisabled';
+
+  function analyticsDisabled(){
+    return window['ga-disable-' + GA_MEASUREMENT_ID] === true;
+  }
+
+  function trackEvent(name, parameters){
+    if(!analyticsDisabled() && typeof window.gtag === 'function'){
+      window.gtag('event', name, parameters);
+    }
+  }
+
+  function clearAnalyticsCookies(){
+    const prefixes = ['_ga', '_gid', '_gat', '_gac', '_gcl'];
+    document.cookie.split(';').forEach(cookie=>{
+      const name = cookie.split('=')[0].trim();
+      if(!prefixes.some(prefix=>name.startsWith(prefix))) return;
+      document.cookie = name + '=; Max-Age=0; path=/; SameSite=Lax';
+      document.cookie = name + '=; Max-Age=0; path=/; domain=.leehilllabs.com; SameSite=Lax';
+    });
+  }
+
+  function updateAnalyticsControl(){
+    el('analytics-toggle').textContent = analyticsDisabled() ? 'Enable analytics' : 'Disable analytics';
+  }
+
+  function toggleAnalytics(){
+    const disable = !analyticsDisabled();
+    window['ga-disable-' + GA_MEASUREMENT_ID] = disable;
+    try{
+      if(disable){
+        localStorage.setItem(ANALYTICS_STORAGE_KEY, '1');
+      }else{
+        localStorage.removeItem(ANALYTICS_STORAGE_KEY);
+      }
+    }catch(e){}
+    if(disable){
+      clearAnalyticsCookies();
+    }else if(typeof window.gtag === 'function'){
+      window.gtag('config', GA_MEASUREMENT_ID, {
+        allow_google_signals: false,
+        allow_ad_personalization_signals: false
+      });
+    }
+    updateAnalyticsControl();
+  }
 
   function haversineMiles(lat1, lon1, lat2, lon2){
     const R = 3958.8;
@@ -389,6 +462,7 @@
 
   let order = [], round = 0, score = 0, results = [];
   let guessMap, photoMap, guessLayer, guessLatLon = null;
+  let gameStartedAt = 0, roundStartedAt = 0, gamesStarted = 0;
 
   const el = id => document.getElementById(id);
 
@@ -458,8 +532,16 @@
   }
 
   function startGame(){
-    order = shuffledIndices(LOCATIONS.length).slice(0,5);
+    const isReplay = gamesStarted > 0;
+    gamesStarted++;
+    gameStartedAt = Date.now();
+    order = shuffledIndices(LOCATIONS.length).slice(0,ROUNDS_PER_GAME);
     round = 0; score = 0; results = [];
+    trackEvent('game_start', {
+      game_version: GAME_VERSION,
+      rounds_planned: ROUNDS_PER_GAME,
+      is_replay: isReplay ? 1 : 0
+    });
     el('screen-start').classList.add('hidden');
     el('screen-final').classList.add('hidden');
     el('screen-game').classList.remove('hidden');
@@ -469,10 +551,16 @@
 
   function startRound(){
     guessLatLon = null;
+    roundStartedAt = Date.now();
     const loc = LOCATIONS[order[round]];
+    trackEvent('round_start', {
+      game_version: GAME_VERSION,
+      round_number: round + 1,
+      rounds_total: ROUNDS_PER_GAME
+    });
     el('hud-round').textContent = String(round+1);
     el('hud-score').textContent = String(score);
-    el('photo-caption').textContent = 'Scene ' + (round+1) + ' of 5';
+    el('photo-caption').textContent = 'Scene ' + (round+1) + ' of ' + ROUNDS_PER_GAME;
     el('map-hint').textContent = 'Click anywhere on the map to place a pin.';
     el('btn-submit').disabled = true;
     el('guess-actions').classList.remove('hidden');
@@ -490,6 +578,14 @@
     const pts = scoreFor(dist);
     score += pts;
     results.push({name: loc.name, dist, pts});
+    trackEvent('guess_submitted', {
+      game_version: GAME_VERSION,
+      round_number: round + 1,
+      distance_miles: Number(dist.toFixed(1)),
+      points: pts,
+      current_score: score,
+      round_elapsed_seconds: Math.round((Date.now() - roundStartedAt) / 1000)
+    });
 
     const trueLatLng = L.latLng(loc.lat, loc.lon);
     L.marker(trueLatLng, {icon: trueIcon()}).addTo(guessLayer);
@@ -503,15 +599,23 @@
     el('result-block').classList.remove('hidden');
     el('guess-actions').classList.add('hidden');
     el('hud-score').textContent = String(score);
-    el('btn-next').textContent = (round >= 4) ? 'See final score' : 'Next round';
+    el('btn-next').textContent = (round >= ROUNDS_PER_GAME - 1) ? 'See final score' : 'Next round';
   }
 
   function nextRound(){
     round++;
-    if(round >= 5){ showFinal(); } else { startRound(); }
+    if(round >= ROUNDS_PER_GAME){ showFinal(); } else { startRound(); }
   }
 
   function showFinal(){
+    const totalDistance = results.reduce((sum, result)=>sum + result.dist, 0);
+    trackEvent('game_complete', {
+      game_version: GAME_VERSION,
+      total_score: score,
+      total_distance_miles: Number(totalDistance.toFixed(1)),
+      rounds_completed: results.length,
+      game_elapsed_seconds: Math.round((Date.now() - gameStartedAt) / 1000)
+    });
     el('screen-game').classList.add('hidden');
     el('screen-final').classList.remove('hidden');
     el('final-total').textContent = String(score);
@@ -526,11 +630,21 @@
     loadBest();
   }
 
+  function playAgain(){
+    trackEvent('play_again', {
+      game_version: GAME_VERSION,
+      previous_score: score
+    });
+    startGame();
+  }
+
   el('btn-start').addEventListener('click', startGame);
   el('btn-submit').addEventListener('click', submitGuess);
   el('btn-next').addEventListener('click', nextRound);
-  el('btn-again').addEventListener('click', startGame);
+  el('btn-again').addEventListener('click', playAgain);
+  el('analytics-toggle').addEventListener('click', toggleAnalytics);
 
+  updateAnalyticsControl();
   loadBest();
 })();
 </script>

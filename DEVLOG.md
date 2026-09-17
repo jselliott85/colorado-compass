@@ -135,6 +135,20 @@ twice even if something else re-triggers the click handler.
   exact URL can open it; there's no password gate. Worth adding one later if real restriction
   (not just obscurity) is ever wanted.
 
+## Analytics
+
+Google Analytics 4 is installed directly in `index.html` using the CO Compass web stream
+(`G-NMP21XF9R0`). In addition to GA4's standard page view, the game sends `game_start`,
+`round_start`, `guess_submitted`, `game_complete`, and `play_again` events. Event parameters
+cover game version, round number, scores, distances, elapsed time, and replay status. Exact
+target and guessed coordinates are deliberately excluded.
+
+The Google tag loads immediately, with Google Signals and ad-personalization signals explicitly
+disabled. A footer disclosure explains what is collected and provides a persistent browser-level
+toggle. Disabling analytics prevents future events, removes accessible GA cookies, and preserves
+the choice in `localStorage` so GA remains disabled on later visits. The analytics data is not
+used for advertising or remarketing.
+
 ## Branding: aligned with leehilllabs.com
 
 The original palette (rust/spruce/gold on a tan background, Barlow Condensed + Roboto Slab
