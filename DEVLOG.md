@@ -87,6 +87,21 @@ straight append:
   seam at that location. Credited separately in the footer attribution line. This is the only
   location using a non-default imagery source; everything else still uses Esri.
 
+## Versioning and release notes
+
+Started tracking a simple version number (`v1.0`, `v1.1`, `v1.2`, ...) once the game had gone
+through a few distinct rounds of changes worth telling a player about. Not strict semver — no
+patch digit, just bump the number for each batch of shipped changes; reserve a jump to `v2.0` for
+something that actually feels like a different game (e.g. a real backend, multiplayer).
+
+Shown in-page as a collapsed `<details class="release-info">` block between the start panel and
+the footer (visible on every screen, since it isn't inside any of the hidden screen divs). History
+so far: v1.0 original game, v1.1 Lee Hill Labs rebrand, v1.2 location pool expansion to 65 spots.
+
+This is a player-facing changelog (what changed), separate from this dev log (why it changed).
+When shipping a future user-visible change, bump the version in two places: the `<summary>` text
+and a new `.release-entry` block at the top of the list in `index.html`.
+
 ## Deployment
 
 - Static single HTML file, no backend, no build step.
