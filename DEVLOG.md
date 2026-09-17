@@ -105,6 +105,21 @@ When shipping a future user-visible change, bump the version in two places: the 
 and the `.release-list` items inside `<details class="release-info">` in `index.html` — replace
 the old notes rather than appending to them.
 
+## Bug: double-submitting a guess
+
+`submitGuess()` originally only guarded on `guessLatLon` being set, which is never cleared after
+a successful submit (only reset at the top of the next `startRound()`). The "Lock in guess"
+button/row was also never hidden or re-disabled once the result was shown — it just sat there
+next to "Next round" / "See final score". Clicking it again re-ran the full scoring logic: added
+the round's points to `score` a second time and pushed a duplicate entry into `results`, most
+visibly reachable on the last round since that's where the exploit button sits right next to
+the "See final score" button players are about to click anyway.
+
+Fixed by hiding the whole `#guess-actions` row (map hint + Lock in guess button) as soon as a
+result is shown, showing it again in `startRound()`, and adding a second guard directly in
+`submitGuess()` (checks `#result-block` is still hidden) so the scoring logic itself can't run
+twice even if something else re-triggers the click handler.
+
 ## Deployment
 
 - Static single HTML file, no backend, no build step.

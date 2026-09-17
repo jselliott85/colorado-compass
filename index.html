@@ -160,7 +160,7 @@
       <div class="map-area">
         <p class="map-prompt">Where in Colorado is this?</p>
         <div id="guess-map"></div>
-        <div class="actions">
+        <div class="actions" id="guess-actions">
           <span class="hint" id="map-hint">Click anywhere on the map to place a pin.</span>
           <button id="btn-submit" disabled>Lock in guess</button>
         </div>
@@ -474,6 +474,7 @@
     el('photo-caption').textContent = 'Scene ' + (round+1) + ' of 5';
     el('map-hint').textContent = 'Click anywhere on the map to place a pin.';
     el('btn-submit').disabled = true;
+    el('guess-actions').classList.remove('hidden');
     el('result-block').classList.add('hidden');
     guessLayer.clearLayers();
     guessMap.fitBounds(CO_BOUNDS, {padding:[6,6]});
@@ -482,7 +483,7 @@
   }
 
   function submitGuess(){
-    if(!guessLatLon) return;
+    if(!guessLatLon || !el('result-block').classList.contains('hidden')) return;
     const loc = LOCATIONS[order[round]];
     const dist = haversineMiles(guessLatLon.lat, guessLatLon.lng, loc.lat, loc.lon);
     const pts = scoreFor(dist);
@@ -499,6 +500,7 @@
     el('result-pts').textContent = '+' + pts;
     el('result-dist').textContent = dist.toFixed(1) + ' miles off';
     el('result-block').classList.remove('hidden');
+    el('guess-actions').classList.add('hidden');
     el('hud-score').textContent = String(score);
     el('btn-next').textContent = (round >= 4) ? 'See final score' : 'Next round';
   }
