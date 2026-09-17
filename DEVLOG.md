@@ -90,20 +90,23 @@ straight append:
 ## Versioning and release notes
 
 Started tracking a simple version number (`v1.0`, `v1.1`, `v1.2`, ...) once the game had gone
-through a few distinct rounds of changes worth telling a player about. Not strict semver — no
-patch digit, just bump the number for each batch of shipped changes; reserve a jump to `v2.0` for
-something that actually feels like a different game (e.g. a real backend, multiplayer).
+through a few distinct rounds of changes worth telling a player about. Loosely semver: bump MINOR
+(`v1.1` → `v1.2`) for new features or content, bump PATCH (`v1.2` → `v1.2.1`) for a bug fix with
+no new content. Reserve a jump to `v2.0` for something that actually feels like a different game
+(e.g. a real backend, multiplayer).
 
 Shown in-page as a collapsed `<details class="release-info">` block between the start panel and
 the footer (visible on every screen, since it isn't inside any of the hidden screen divs). Shows
-**only the latest version's notes** — no expandable history tree, by design (kept simple on
-purpose). History so far: v1.0 original game, v1.1 Lee Hill Labs rebrand, v1.2 location pool
-expansion to 65 spots.
+**only the current version's notes** — no expandable history tree, by design (kept simple on
+purpose). Within that current version, notes are cumulative: a PATCH bump appends a line to the
+bottom of the existing list rather than replacing it (e.g. v1.2.1 kept both v1.2's original
+bullets and added a third for the bug fix). A MINOR/MAJOR bump is what starts a fresh list.
+History so far: v1.0 original game, v1.1 Lee Hill Labs rebrand, v1.2 location pool expansion to 65
+spots, v1.2.1 fixed the "Lock in guess" double-submit bug.
 
 This is a player-facing changelog (what changed), separate from this dev log (why it changed).
 When shipping a future user-visible change, bump the version in two places: the `<summary>` text
-and the `.release-list` items inside `<details class="release-info">` in `index.html` — replace
-the old notes rather than appending to them.
+and the `.release-list` items inside `<details class="release-info">` in `index.html`.
 
 ## Bug: double-submitting a guess
 
