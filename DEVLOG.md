@@ -119,6 +119,11 @@ straight append:
   the same USGS `loc.tiles` override, now the fifth (and probably not last) location using it.
 - **Indian Peaks Wilderness and Leadville zoomed out** one step each (12→11 and 14→13) per
   audit feedback wanting more surrounding context in both.
+- **Indian Peaks Wilderness recentered again**, this time for framing rather than a fix: pulled
+  south so Lake Granby (a large reservoir north of the wilderness) drops out of frame, and
+  positioned so Ward sits near the northeast corner and Nederland near the southeast — both real
+  towns, coordinates confirmed via Nominatim rather than eyeballing satellite imagery for once,
+  since they're small enough to be easy to miss by eye at this zoom.
 
 ## Location image audit
 
