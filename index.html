@@ -101,9 +101,7 @@
   .release-info summary::-webkit-details-marker{display:none;}
   .release-info summary::before{content:'\25B8\0020'; color:var(--spruce);}
   .release-info[open] summary::before{content:'\25BE\0020';}
-  .release-entry{margin-top:14px; padding-top:14px; border-top:1px solid var(--border);}
-  .release-version{font-weight:700; color:var(--text); margin:0;}
-  .release-list{margin:8px 0 0; padding-left:18px;}
+  .release-list{margin:12px 0 0; padding-left:18px;}
   .release-list li{margin-bottom:6px;}
 
   .site-footer{background:var(--surface-2); border-top:1px solid var(--border); margin-top:32px; padding:24px 20px;}
@@ -185,27 +183,10 @@
 
   <details class="release-info">
     <summary>Release notes &mdash; v1.2</summary>
-    <div class="release-entry">
-      <p class="release-version">v1.2</p>
-      <ul class="release-list">
-        <li>Grew the location pool from 40 to 65 spots, including a new Cities category (Fort Collins, Grand Junction, Pueblo, Greeley, Boulder).</li>
-        <li>Added more ski resorts, mountain peaks, lakes, and a few more landmarks.</li>
-        <li>Fixed a couple of spots where the satellite photo didn't clearly show the location.</li>
-      </ul>
-    </div>
-    <div class="release-entry">
-      <p class="release-version">v1.1</p>
-      <ul class="release-list">
-        <li>Redesigned to match Lee Hill Labs branding &mdash; new colors, typography, and a footer credit.</li>
-        <li>Updated homepage copy.</li>
-      </ul>
-    </div>
-    <div class="release-entry">
-      <p class="release-version">v1.0</p>
-      <ul class="release-list">
-        <li>Initial release: 5 rounds per game, drawn from 40 curated Colorado locations.</li>
-      </ul>
-    </div>
+    <ul class="release-list">
+      <li>Expanded location pool &mdash; more Colorado resorts, peaks, towns, and water!</li>
+      <li>Improved satellite imagery.</li>
+    </ul>
   </details>
 </div>
 
