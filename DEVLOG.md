@@ -114,6 +114,10 @@ straight append:
   trail network, which was small and off to one side; **Winter Park** shifted south to bring the
   southern runs into frame at the same zoom; **Eldora** zoomed 13→14 for a closer view of the
   trail fan.
+- **Longs Peak had the same Esri seam** as Wolf Creek/Royal Gorge/Bear Lake/St. Elmo — fixed with
+  the same USGS `loc.tiles` override, now the fifth (and probably not last) location using it.
+- **Indian Peaks Wilderness and Leadville zoomed out** one step each (12→11 and 14→13) per
+  audit feedback wanting more surrounding context in both.
 
 ## Location image audit
 
