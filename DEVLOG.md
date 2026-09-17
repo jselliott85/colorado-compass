@@ -85,18 +85,23 @@ straight append:
   USGS's `USGSImageryOnly` service (`basemap.nationalmap.gov`) instead — public-domain U.S.
   government imagery, uses the same `{z}/{y}/{x}` tile scheme Leaflet already expects, and has no
   seam at that location. Credited separately in the footer attribution line.
-- **Royal Gorge's cloud cover:** found during the image-audit pass (see below) — Esri's imagery
-  for this location has a persistent cloud bank obscuring the canyon. Same fix as Wolf Creek: a
-  `loc.tiles` override to USGS `USGSImageryOnly`, which is cloud-free here. Wolf Creek and Royal
-  Gorge are currently the only two locations using a non-default imagery source; everything else
-  still uses Esri.
+- **Royal Gorge's cloud cover, Bear Lake's imagery seam:** both found during the image-audit pass
+  (see below). Royal Gorge had a persistent cloud bank obscuring the canyon; Bear Lake had the
+  same kind of Esri mosaic seam as Wolf Creek (a hard vertical line between two different capture
+  dates). Both fixed the same way: a `loc.tiles` override to USGS `USGSImageryOnly`, which is
+  clean at both locations. Wolf Creek, Royal Gorge, and Bear Lake are currently the only three
+  locations using a non-default imagery source; everything else still uses Esri.
+- **Mesa Verde zoomed out:** was zoom 14 (too tight on one canyon), dropped to zoom 13 to show
+  more of the surrounding mesa fingers — also found during the image-audit pass.
 
 ## Location image audit
 
 Built a review page (published as a Claude Artifact, not a Google Doc — see below) showing every
 location's in-game satellite photo next to a reference map with the scoring coordinate marked,
-grouped by category, so the pool could be sanity-checked by eye. Found and fixed Royal Gorge's
-cloud cover this way; more fixes may follow as review continues.
+grouped by category, so the pool could be sanity-checked by eye. Comments left on that page get
+triaged and fixed here the same way any other bug report would be — see the imagery-source and
+zoom fixes above found this way so far. This is an ongoing process, not a one-time pass; expect
+more of these as review continues.
 
 **Why an Artifact instead of the Google Doc that was asked for:** uploading to Google Drive
 through the available tool requires the entire file's bytes to be sent as inline `base64Content`
