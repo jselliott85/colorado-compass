@@ -84,8 +84,27 @@ straight append:
   optional per-location tile-layer override (`loc.tiles`, read in `buildPhotoMap()`) pointing at
   USGS's `USGSImageryOnly` service (`basemap.nationalmap.gov`) instead — public-domain U.S.
   government imagery, uses the same `{z}/{y}/{x}` tile scheme Leaflet already expects, and has no
-  seam at that location. Credited separately in the footer attribution line. This is the only
-  location using a non-default imagery source; everything else still uses Esri.
+  seam at that location. Credited separately in the footer attribution line.
+- **Royal Gorge's cloud cover:** found during the image-audit pass (see below) — Esri's imagery
+  for this location has a persistent cloud bank obscuring the canyon. Same fix as Wolf Creek: a
+  `loc.tiles` override to USGS `USGSImageryOnly`, which is cloud-free here. Wolf Creek and Royal
+  Gorge are currently the only two locations using a non-default imagery source; everything else
+  still uses Esri.
+
+## Location image audit
+
+Built a review page (published as a Claude Artifact, not a Google Doc — see below) showing every
+location's in-game satellite photo next to a reference map with the scoring coordinate marked,
+grouped by category, so the pool could be sanity-checked by eye. Found and fixed Royal Gorge's
+cloud cover this way; more fixes may follow as review continues.
+
+**Why an Artifact instead of the Google Doc that was asked for:** uploading to Google Drive
+through the available tool requires the entire file's bytes to be sent as inline `base64Content`
+in the tool call — there's no file-path-based upload path. A single test image (~108KB) cost
+roughly 870K tokens to round-trip that way; scaling to 130 images would have cost tens of millions
+of tokens, far beyond budget. An Artifact publish takes local file paths directly instead of
+inlining content, so it doesn't hit this wall. A short Google Doc with just a link to the Artifact
+was still placed in the requested Drive folder as a compromise.
 
 ## Versioning and release notes
 
