@@ -36,22 +36,56 @@ which runs in the user's own browser with no such restriction and can freely loa
 
 Random lat/lon anywhere in Colorado was considered and rejected — much of the eastern plains is
 visually indistinguishable brown/green farmland from above, which makes for a bad round. Instead
-the game draws 5 locations per game from a **curated pool of 40**, randomly ordered:
+the game draws 5 locations per game from a curated pool, randomly ordered. The pool has grown
+since the original 40; homepage copy deliberately says "famous spots" rather than citing a count,
+so it doesn't go stale as the pool changes.
 
-- 10 original landmarks/parks (Maroon Bells, Garden of the Gods, Great Sand Dunes, Royal Gorge,
-  Pikes Peak, Mesa Verde, Red Rocks, downtown Denver, Bear Lake/RMNP, Colorado National Monument)
-- 7 bodies of water (Dillon, Gross, Barker, Boulder reservoirs, Grand Lake, Blue Mesa Reservoir,
-  Turquoise Lake)
-- 7 ski resorts (Vail, Aspen Snowmass, Breckenridge, Steamboat, Winter Park, Copper Mountain,
-  Keystone)
-- 8 mountain ranges/peaks (Longs Peak, Collegiate Peaks, Mount Elbert, Mount Evans, San Juan
-  Mountains, Gore Range, Sawatch Range, Flat Tops Wilderness)
-- 8 small mountain towns (Crested Butte, Telluride, Silverton, Ouray, Leadville, Salida, Buena
-  Vista, Georgetown)
+Current pool (65 locations):
+
+- 13 landmarks/parks
+- 9 bodies of water
+- 16 ski resorts
+- 12 mountain ranges/peaks
+- 10 mountain towns
+- 5 cities (new category — Fort Collins, Grand Junction, Pueblo, Greeley, Boulder)
 
 Known limitation: several of these cluster geographically (Summit County ski towns; the San
 Juans), so a wrong guess in the right general area can still score well. Not fixed as of this
 writing — worth watching if it makes the game feel too forgiving.
+
+### Expansion notes (dedup, coordinate fixes, imagery sourcing)
+
+When a large batch of new locations was added, a few needed judgment calls rather than a
+straight append:
+
+- **Duplicate real-world places skipped:** Steamboat Springs and Telluride were requested as new
+  ski-resort entries, but the pool already had Steamboat (as a resort) and Telluride (as a
+  mountain town) covering the same place — adding them again would've just been two pins on the
+  same spot. Same for Pikes Peak (already a landmark) and Gore Range (already a range).
+- **Range vs. individual peak overlap:** when a newly requested individual peak turned out to
+  already be covered by an existing range entry, the range was dropped in favor of the specific
+  peak (a tighter, more identifiable shot than a wide range view). This removed **Sawatch
+  Range** (superseded by **Mount Massive**, with Mount Elbert already separate) and **Collegiate
+  Peaks** (superseded by **Mount Harvard**). Sangre de Cristo Range was skipped outright in favor
+  of **Blanca Peak**, its highest point, for the same reason.
+- **Silverton Mountain dropped:** requested as a ski-resort entry, but it's an intentionally
+  undeveloped, single-lift, guide-required area with no groomed trails or base village — from
+  satellite it's indistinguishable from generic San Juans backcountry, and the pool already has
+  both "Silverton" (town) and "San Juan Mountains" covering that same visual territory.
+- **Steamboat Springs coordinates corrected:** the original pin (in the pool before this
+  expansion) was centered too far north, mostly showing bare alpine ridgeline above the resort
+  rather than its recognizable trail network. Verified by pulling the exact bbox Leaflet would
+  render (via Esri's `/export` endpoint) at a few candidate points and eyeballing which one
+  actually captured the trail fan, then recentered on it.
+- **Wolf Creek's imagery seam:** Esri World Imagery has a hard mosaic seam (two different capture
+  dates stitched together — green summer on one side, grainy dark snow imagery on the other)
+  sitting almost exactly on Wolf Creek Pass. No nearby coordinate avoids it, since the seam is
+  baked into Esri's basemap itself, not a framing problem. Fixed by giving this one location an
+  optional per-location tile-layer override (`loc.tiles`, read in `buildPhotoMap()`) pointing at
+  USGS's `USGSImageryOnly` service (`basemap.nationalmap.gov`) instead — public-domain U.S.
+  government imagery, uses the same `{z}/{y}/{x}` tile scheme Leaflet already expects, and has no
+  seam at that location. Credited separately in the footer attribution line. This is the only
+  location using a non-default imagery source; everything else still uses Esri.
 
 ## Deployment
 

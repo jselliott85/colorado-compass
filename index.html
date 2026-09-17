@@ -176,7 +176,7 @@
 
 <footer class="site-footer">
   <div class="footer-inner">
-    <p class="attribution">Satellite imagery &copy; Esri, Maxar, Earthstar Geographics &middot; Reference map tiles &copy; Esri &middot; distances are straight-line, in miles</p>
+    <p class="attribution">Satellite imagery &copy; Esri, Maxar, Earthstar Geographics &middot; Wolf Creek imagery &copy; USGS The National Map &middot; Reference map tiles &copy; Esri &middot; distances are straight-line, in miles</p>
     <a class="lhl-credit" href="https://leehilllabs.com" target="_blank" rel="noreferrer">
       <img class="lhl-logo" src="assets/lhl-logo.png" alt="Lee Hill Labs" width="158" height="140">
       <span>Created by Lee Hill Labs, Inc.</span>
@@ -224,6 +224,12 @@
       fact:"This subalpine lake near Estes Park, ringed by spruce and jagged peaks, sits at about 9,450 feet." },
     { name:"Colorado National Monument", lat:39.0561, lon:-108.6929, zoom:13,
       fact:"Sheer red canyons and freestanding rock towers rise above Grand Junction along Rim Rock Drive." },
+    { name:"Black Canyon of the Gunnison National Park", lat:38.5754, lon:-107.7416, zoom:13,
+      fact:"Some of the steepest cliffs and oldest exposed rock in North America line this narrow gorge, so deep and tight that parts of the canyon floor see as little as 33 minutes of sunlight a day." },
+    { name:"Trail Ridge Road Visitor Center", lat:40.4292, lon:-105.8161, zoom:13,
+      fact:"The highest continuous paved through-road in the United States crests above 12,000 feet here, with more than 11 miles of it running above treeline." },
+    { name:"St. Elmo", lat:38.6989, lon:-106.3467, zoom:15,
+      fact:"One of Colorado's best-preserved ghost towns, this 1880s gold-mining settlement at the base of the Sawatch Range still has dozens of original wooden buildings standing." },
 
     { name:"Dillon Reservoir", lat:39.6208, lon:-106.0453, zoom:13,
       fact:"This reservoir near Frisco and Silverthorne holds Denver's drinking water, piped more than 23 miles through the mountains via the Roberts Tunnel." },
@@ -239,6 +245,10 @@
       fact:"Colorado's largest body of water by volume, formed by a dam on the Gunnison River, and home to the state's biggest population of kokanee salmon." },
     { name:"Turquoise Lake", lat:39.2830, lon:-106.4230, zoom:13,
       fact:"A reservoir near Leadville ringed by 14,000-foot peaks, sitting at over 9,800 feet, one of the highest lakes of its size in the country." },
+    { name:"Hanging Lake", lat:39.5761, lon:-107.1934, zoom:15,
+      fact:"Fed by waterfalls and colored a striking turquoise by dissolved travertine minerals, this fragile lake in Glenwood Canyon now requires a permit and reservation to visit." },
+    { name:"Lake San Cristobal", lat:37.9803, lon:-107.2842, zoom:13,
+      fact:"Colorado's second-largest natural lake, formed about 700 years ago when the Slumgullion Earthflow landslide dammed the Lake Fork of the Gunnison River." },
 
     { name:"Vail", lat:39.6403, lon:-106.3742, zoom:13,
       fact:"One of the largest single ski mountains in North America, its famous Back Bowls open up nearly 3,000 acres of terrain." },
@@ -246,7 +256,7 @@
       fact:"Aspen's four mountains draw skiers from around the world, and the town's Victorian-era core dates back to a 19th-century silver boom." },
     { name:"Breckenridge", lat:39.4817, lon:-106.0384, zoom:13,
       fact:"Founded during an 1859 gold rush, this ski town's Peak 8 base sits at over 9,600 feet." },
-    { name:"Steamboat Springs", lat:40.4850, lon:-106.7550, zoom:13,
+    { name:"Steamboat Springs", lat:40.4530, lon:-106.7650, zoom:13,
       fact:"Known for 'champagne powder' snow, this ski town has sent more Winter Olympians to the Games than any other town in North America." },
     { name:"Winter Park", lat:39.8867, lon:-105.7631, zoom:13,
       fact:"Colorado's oldest continuously operating ski resort, reached from Denver by a scenic train route through the Moffat Tunnel." },
@@ -254,11 +264,28 @@
       fact:"This resort's terrain naturally splits by difficulty from west to east, making it easy to tell beginner, intermediate, and expert runs apart from above." },
     { name:"Keystone", lat:39.6084, lon:-105.9438, zoom:13,
       fact:"One of the few Colorado resorts with regular night skiing, spread across three interconnected mountains near Dillon Reservoir." },
+    { name:"Eldora", lat:39.9444, lon:-105.5998, zoom:13,
+      fact:"Colorado's closest major ski area to Denver and Boulder, about 21 miles from Boulder, and home to a large Nordic touring center alongside its downhill terrain." },
+    { name:"Wolf Creek", lat:37.4719, lon:-106.7930, zoom:13,
+      tiles:{ url:'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}', attribution:'Imagery &copy; USGS The National Map' },
+      fact:"Perched on a moisture-catching pass on the Continental Divide, this resort claims more average annual snowfall than any other in Colorado, with no real estate development at its base." },
+    { name:"Arapahoe Basin", lat:39.6425, lon:-105.8719, zoom:13,
+      fact:"One of the highest ski areas in North America, with a base above 10,700 feet, it's traditionally among the first Colorado resorts to open and the last to close each year." },
+    { name:"Loveland", lat:39.6803, lon:-105.8975, zoom:13,
+      fact:"Straddling the Continental Divide atop Loveland Pass, its lift-served terrain reaches nearly 13,000 feet, some of the highest chairlift-accessed skiing in the country." },
+    { name:"Monarch Mountain", lat:38.5142, lon:-106.3319, zoom:13,
+      fact:"Sitting directly on the Continental Divide on Monarch Pass, this independently owned resort relies on reliably deep natural snow instead of snowmaking." },
+    { name:"Beaver Creek", lat:39.5788, lon:-106.5129, zoom:13,
+      fact:"Developed by Vail Resorts in the 1980s as an upscale sister resort to Vail, it's known for meticulous grooming and a tongue-in-cheek motto: 'Not Exactly Roughing It.'" },
+    { name:"Purgatory", lat:37.6297, lon:-107.8144, zoom:13,
+      fact:"Known for two decades as Durango Mountain Resort, it reverted to its original name, Purgatory, in 2013." },
+    { name:"Powderhorn", lat:39.0660, lon:-108.1420, zoom:13,
+      fact:"Colorado's only resort on the Western Slope's high plateau country, built on the flank of the Grand Mesa, the largest flat-topped mountain in the world." },
+    { name:"Crested Butte Mountain Resort", lat:38.8992, lon:-106.9647, zoom:13,
+      fact:"Home to some of the steepest inbounds terrain in North America, including the Extreme Limits zone below the 12,162-foot summit of Mount Crested Butte." },
 
     { name:"Longs Peak", lat:40.2549, lon:-105.6151, zoom:12,
       fact:"The northernmost 14,000-foot peak in the Rockies and the tallest in Rocky Mountain National Park, with a distinctive flat summit." },
-    { name:"Collegiate Peaks", lat:38.9244, lon:-106.3206, zoom:11,
-      fact:"A cluster of 14,000-foot summits near Buena Vista named after Ivy League schools, including Harvard, Yale, Princeton, and Columbia." },
     { name:"Mount Elbert", lat:39.1178, lon:-106.4453, zoom:12,
       fact:"At 14,440 feet, this is the highest point in Colorado and the second-highest peak in the contiguous United States." },
     { name:"Mount Evans", lat:39.5883, lon:-105.6438, zoom:12,
@@ -267,10 +294,20 @@
       fact:"One of the most rugged ranges in the Rockies, this pocket near Silverton is laced with old mining roads and steep, jagged peaks." },
     { name:"Gore Range", lat:39.6900, lon:-106.3000, zoom:11,
       fact:"A jagged, less-visited range east of Vail and Silverthorne, named for an Irish nobleman who led an infamous 1850s hunting expedition through the area." },
-    { name:"Sawatch Range", lat:39.1875, lon:-106.4759, zoom:11,
-      fact:"Home to more 14,000-foot peaks than any other range in Colorado, including Mount Elbert and Mount Massive." },
     { name:"Flat Tops Wilderness", lat:39.9200, lon:-107.2000, zoom:11,
       fact:"Named for its distinctive lava-capped plateaus, this range between Steamboat and Glenwood Springs was one of the first areas ever protected for wilderness study, back in 1919." },
+    { name:"Indian Peaks Wilderness", lat:40.0967, lon:-105.6444, zoom:12,
+      fact:"A rugged, heavily glaciated wilderness just south of Rocky Mountain National Park, its peaks named largely for Native American tribes and leaders in the early 1900s." },
+    { name:"Mosquito Range", lat:39.2833, lon:-106.1167, zoom:11,
+      fact:"Home to the 'Decalibron' loop of four connected 14,000-foot summits &mdash; Mounts Democrat, Cameron, Lincoln, and Bross &mdash; one of the most popular high-altitude hikes in the state." },
+    { name:"Mount Massive", lat:39.1875, lon:-106.4759, zoom:12,
+      fact:"Colorado's second-highest peak at 14,428 feet, just 12 feet shorter than neighboring Mount Elbert, with a summit ridge long enough to include five named points above 14,000 feet." },
+    { name:"Mount Harvard", lat:38.9244, lon:-106.3206, zoom:12,
+      fact:"The third-highest peak in Colorado at 14,420 feet, part of the Collegiate Peaks near Buena Vista and named for Harvard University after an 1869 survey expedition." },
+    { name:"Blanca Peak", lat:37.5775, lon:-105.4856, zoom:12,
+      fact:"At 14,351 feet, the highest point in the Sangre de Cristo Range and sacred to the Navajo as one of four mountains marking the boundaries of their traditional homeland." },
+    { name:"La Plata Peak", lat:39.0294, lon:-106.4728, zoom:12,
+      fact:"Colorado's fifth-highest summit at 14,336 feet, rising above the Lake Creek valley near Twin Lakes." },
 
     { name:"Crested Butte", lat:38.8697, lon:-106.9878, zoom:14,
       fact:"Once a coal mining town, it's now known as Colorado's wildflower capital and a hub for extreme mountain biking." },
@@ -287,7 +324,22 @@
     { name:"Buena Vista", lat:38.8422, lon:-106.1311, zoom:14,
       fact:"A gateway to the Collegiate Peaks and a major put-in point for rafting the Arkansas River." },
     { name:"Georgetown", lat:39.7047, lon:-105.6969, zoom:14,
-      fact:"A well-preserved 1870s silver-mining town, connected to nearby Silver Plume by a narrow-gauge loop railroad with a dramatic high bridge." }
+      fact:"A well-preserved 1870s silver-mining town, connected to nearby Silver Plume by a narrow-gauge loop railroad with a dramatic high bridge." },
+    { name:"Black Hawk", lat:39.8003, lon:-105.4919, zoom:15,
+      fact:"A former gold-mining boomtown turned casino town after Colorado legalized limited-stakes gambling here in 1991, now home to some of the state's largest casinos." },
+    { name:"Estes Park", lat:40.3772, lon:-105.5217, zoom:14,
+      fact:"The gateway town to Rocky Mountain National Park, also known for the Stanley Hotel, whose 1909 grandeur inspired Stephen King to write 'The Shining.'" },
+
+    { name:"Fort Collins", lat:40.5853, lon:-105.0844, zoom:14,
+      fact:"Home to Colorado State University, and per capita one of the most brewery-dense cities in the country." },
+    { name:"Grand Junction", lat:39.0639, lon:-108.5506, zoom:14,
+      fact:"Sitting at the confluence of the Colorado and Gunnison Rivers on the Western Slope, surrounded by high-desert mesas and orchards, this is the largest city between Denver and Salt Lake City." },
+    { name:"Pueblo", lat:38.2544, lon:-104.6091, zoom:14,
+      fact:"Known as the 'Steel City' for its historic steel mill, and home to more Medal of Honor recipients per capita than any other U.S. city." },
+    { name:"Greeley", lat:40.4233, lon:-104.7091, zoom:14,
+      fact:"Founded in 1870 as a utopian agricultural colony by journalist Nathan Meeker, on land promoted by New York Tribune editor Horace Greeley." },
+    { name:"Boulder", lat:40.0150, lon:-105.2705, zoom:14,
+      fact:"Ringed by the dramatic tilted sandstone slabs of the Flatirons, and home to the flagship campus of the University of Colorado." }
   ];
 
   function guessIcon(){
@@ -368,8 +420,10 @@
       doubleClickZoom: false, boxZoom: false, keyboard: false, touchZoom: false,
       attributionControl: true
     });
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      attribution: 'Imagery &copy; Esri',
+    // A few locations override the default Esri layer, e.g. where its imagery mosaic has a bad seam.
+    const tiles = loc.tiles || { url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attribution:'Imagery &copy; Esri' };
+    L.tileLayer(tiles.url, {
+      attribution: tiles.attribution,
       maxZoom: 18
     }).addTo(photoMap);
   }
