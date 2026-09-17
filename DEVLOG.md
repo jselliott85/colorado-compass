@@ -166,7 +166,8 @@ purpose). Within that current version, notes are cumulative: a PATCH bump append
 bottom of the existing list rather than replacing it (e.g. v1.2.1 kept both v1.2's original
 bullets and added a third for the bug fix). A MINOR/MAJOR bump is what starts a fresh list.
 History so far: v1.0 original game, v1.1 Lee Hill Labs rebrand, v1.2 location pool expansion to 65
-spots, v1.2.1 fixed the "Lock in guess" double-submit bug.
+spots, v1.2.1 fixed the "Lock in guess" double-submit bug, v1.2.2 the location image audit round
+(imagery-source fixes, pin corrections/reframing, Hanging Lake removed — pool now 64).
 
 This is a player-facing changelog (what changed), separate from this dev log (why it changed).
 When shipping a future user-visible change, bump the version in two places: the `<summary>` text
