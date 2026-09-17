@@ -65,6 +65,43 @@ writing — worth watching if it makes the game feel too forgiving.
   exact URL can open it; there's no password gate. Worth adding one later if real restriction
   (not just obscurity) is ever wanted.
 
+## Branding: aligned with leehilllabs.com
+
+The original palette (rust/spruce/gold on a tan background, Barlow Condensed + Roboto Slab
+headers) was a standalone "Colorado desert" look with no tie to the parent company. Restyled to
+share a visual language with leehilllabs.com, since this game is Lee Hill Labs-branded:
+
+- Swapped the font stack to **Inter** everywhere (was Barlow/Barlow Condensed/Roboto Slab),
+  matching the wordmark and body font LHL's marketing site uses.
+- Replaced the primary action color (buttons, score highlights) with LHL's brand teal `#295C52`
+  (hover `#214D45`), pulled directly from leehilllabs.com's compiled CSS. `--rust` stays as a
+  secondary/map-pin color — still gives the guess pin and true-location pin visible contrast
+  against the new teal.
+- Backgrounds/borders/text colors retuned to LHL's warm-cream-and-near-black palette
+  (`#FAF8F5` bg, `#1C241F` text, `#E5E0D9` borders) instead of the earlier tan/brown set.
+- Card and button corner radii bumped from 4–6px to 8–12px, and an uppercase-eyebrow-label
+  style (`.eyebrow`, `.hud`) was added, both matching patterns from LHL's page CSS
+  (`page-module__E0kJGG__*` classes, fetched from the live site's `_next/static` chunks since
+  there's no public design system doc).
+- Dark mode variants were hand-derived (LHL's own site has no dark mode to copy) by keeping the
+  same hue relationships — lighter teal (`#5FA697`) for contrast on a dark background.
+
+## Footer: Lee Hill Labs attribution
+
+Added a full-width footer band (cream `--surface-2`, border-top, matching LHL's own footer
+styling) below the existing Esri attribution line, with a link to leehilllabs.com and the
+company logo.
+
+- Logo source: a flattened PNG (`LHL v5.png`) from the user's Google Drive, opaque white
+  background, 2208×1948. Processed locally (Pillow) to key out the white background to
+  transparency, cropped to the artwork's bounding box, and re-exported at 158×140 as
+  `assets/lhl-logo.png` (~9KB) — small enough for a footer credit, retina-sharp at the ~26px
+  display height used in CSS.
+- Because the logo is solid black on transparent, it disappears against the dark-mode
+  background; a `filter:invert(1)` is applied to `.lhl-logo` under the same
+  `prefers-color-scheme: dark` query the rest of the theme uses, rather than shipping a second
+  logo asset.
+
 ## Possible next steps (not yet done)
 
 - Grow the location pool further if repeats start feeling too frequent.

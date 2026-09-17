@@ -7,89 +7,104 @@
 <title>Colorado Compass</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Barlow:wght@400;500;600&family=Roboto+Slab:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
   :root{
-    --bg:#F3EEE3;
+    --bg:#FAF8F5;
     --surface:#FFFFFF;
-    --surface-2:#EBE3D2;
-    --text:#2B2620;
-    --text-muted:#6B6355;
+    --surface-2:#F3EEE3;
+    --text:#1C241F;
+    --text-muted:#5C6661;
     --rust:#B5502C;
-    --spruce:#375534;
+    --spruce:#295C52;
+    --spruce-hover:#214D45;
+    --eyebrow:#476159;
     --gold:#C6912E;
-    --border:#D8CFBC;
+    --border:#E5E0D9;
   }
   @media (prefers-color-scheme: dark){
     :root:not([data-theme="light"]){
-      --bg:#1B1E1A; --surface:#242821; --surface-2:#2C3128;
-      --text:#EDE8DC; --text-muted:#A79E8C;
-      --rust:#D2703F; --spruce:#7BAE77; --gold:#E3B75E; --border:#3A3F35;
+      --bg:#161C19; --surface:#1E2622; --surface-2:#22302A;
+      --text:#EDEEE9; --text-muted:#9FAAA4;
+      --rust:#D2703F; --spruce:#5FA697; --spruce-hover:#7BBBAD; --eyebrow:#8FB3A8; --gold:#E3B75E; --border:#33403A;
     }
   }
   *{box-sizing:border-box;}
-  body{margin:0; background:var(--bg); color:var(--text); font-family:'Barlow', sans-serif;}
+  body{margin:0; background:var(--bg); color:var(--text); font-family:'Inter', -apple-system, BlinkMacSystemFont, sans-serif;}
   .wrap{max-width:900px; margin:0 auto; padding:24px 20px 48px;}
   header{text-align:center; padding:4px 0 18px;}
-  h1{font-family:'Roboto Slab', serif; font-weight:700; font-size:clamp(28px,5vw,42px); margin:0 0 4px;}
+  .eyebrow{
+    text-transform:uppercase; letter-spacing:.12em; font-size:12px; font-weight:600;
+    color:var(--eyebrow); margin:0 0 10px;
+  }
+  h1{font-weight:700; letter-spacing:-0.02em; font-size:clamp(28px,5vw,42px); margin:0 0 4px;}
   .tagline{color:var(--text-muted); font-size:16px; margin:0;}
 
   .hud{
     display:flex; justify-content:space-between; align-items:baseline;
-    font-family:'Barlow Condensed', sans-serif; font-size:19px; font-weight:600;
+    text-transform:uppercase; letter-spacing:.04em; font-size:13px; font-weight:600;
     color:var(--text-muted); border-bottom:1px solid var(--border);
     padding-bottom:10px; margin-bottom:18px;
   }
-  .hud b{color:var(--text); font-weight:600;}
-  .hud .score{color:var(--rust);}
+  .hud b{color:var(--text); font-weight:700;}
+  .hud .score{color:var(--spruce);}
 
-  .card{background:var(--surface); border:1px solid var(--border); border-radius:6px; overflow:hidden;}
+  .card{background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden;}
 
   .photo-frame{position:relative; border-bottom:1px solid var(--border);}
   #photo-map{height:280px; width:100%; background:var(--surface-2);}
   .photo-caption{
     position:absolute; left:14px; bottom:12px; z-index:500;
-    font-family:'Barlow Condensed', sans-serif; font-size:15px; color:#fff;
-    background:rgba(20,20,16,0.6); padding:4px 10px; border-radius:3px;
+    font-size:14px; font-weight:600; color:#fff;
+    background:rgba(20,20,16,0.6); padding:4px 10px; border-radius:4px;
   }
 
   .map-area{padding:16px;}
-  .map-prompt{font-family:'Barlow Condensed', sans-serif; font-size:18px; font-weight:600; margin:0 0 10px;}
-  #guess-map{height:440px; width:100%; border:1px solid var(--border); border-radius:4px;}
+  .map-prompt{font-size:18px; font-weight:600; margin:0 0 10px;}
+  #guess-map{height:440px; width:100%; border:1px solid var(--border); border-radius:8px;}
 
   .actions{display:flex; justify-content:space-between; align-items:center; margin-top:14px; gap:12px; flex-wrap:wrap;}
   .hint{font-size:14px; color:var(--text-muted);}
   button{
-    font-family:'Barlow Condensed', sans-serif; font-size:18px; font-weight:600;
-    padding:11px 26px; border-radius:4px; border:none; cursor:pointer;
-    background:var(--rust); color:#fff; transition:opacity 0.15s ease;
+    font-family:'Inter', sans-serif; font-size:16px; font-weight:600;
+    padding:14px 28px; border-radius:8px; border:none; cursor:pointer;
+    background:var(--spruce); color:#fff; transition:background-color 0.16s ease, transform 0.16s ease;
   }
   button:disabled{background:var(--border); color:var(--text-muted); cursor:not-allowed;}
-  button:not(:disabled):hover{opacity:0.88;}
+  button:not(:disabled):hover{background:var(--spruce-hover); transform:translateY(-1px);}
 
   .result{padding:20px 22px 22px; border-top:1px solid var(--border);}
   .result-top{display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:14px; flex-wrap:wrap; gap:10px;}
-  .result-place{font-family:'Roboto Slab', serif; font-weight:700; font-size:22px; margin:0;}
+  .result-place{font-weight:700; font-size:22px; margin:0;}
   .result-fact{color:var(--text-muted); font-size:15px; margin:4px 0 0; max-width:56ch;}
   .result-score{text-align:right;}
-  .result-score .pts{font-family:'Roboto Slab', serif; font-size:30px; font-weight:700; color:var(--rust); line-height:1;}
+  .result-score .pts{font-size:30px; font-weight:700; color:var(--spruce); line-height:1;}
   .result-score .dist{font-size:14px; color:var(--text-muted);}
 
-  .panel{background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:36px 30px; text-align:center;}
+  .panel{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:36px 30px; text-align:center;}
   .panel p{color:var(--text-muted); font-size:16px; max-width:50ch; margin:0 auto 22px; line-height:1.5;}
-  .best{font-family:'Barlow Condensed', sans-serif; font-size:16px; color:var(--text-muted); margin-top:16px;}
+  .best{font-size:15px; color:var(--text-muted); margin-top:16px;}
 
   .breakdown{width:100%; border-collapse:collapse; margin:22px 0; text-align:left; font-size:15px;}
-  .breakdown th{font-family:'Barlow Condensed', sans-serif; font-weight:600; color:var(--text-muted); text-align:left; padding:6px 8px; border-bottom:1px solid var(--border); font-size:14px;}
+  .breakdown th{font-weight:600; color:var(--text-muted); text-align:left; padding:6px 8px; border-bottom:1px solid var(--border); font-size:12px; text-transform:uppercase; letter-spacing:.06em;}
   .breakdown td{padding:7px 8px; border-bottom:1px solid var(--border);}
   .breakdown tr:last-child td{border-bottom:none;}
-  .final-total{font-family:'Roboto Slab', serif; font-size:40px; font-weight:700; color:var(--rust); margin:6px 0 2px;}
-  .final-total-label{font-family:'Barlow Condensed', sans-serif; color:var(--text-muted); font-size:16px;}
+  .final-total{font-size:40px; font-weight:700; letter-spacing:-0.02em; color:var(--spruce); margin:6px 0 2px;}
+  .final-total-label{color:var(--text-muted); font-size:15px;}
 
   .hidden{display:none !important;}
-  footer{text-align:center; color:var(--text-muted); font-size:13px; margin-top:22px;}
+
+  .site-footer{background:var(--surface-2); border-top:1px solid var(--border); margin-top:32px; padding:24px 20px;}
+  .footer-inner{max-width:900px; margin:0 auto; display:flex; flex-direction:column; align-items:center; gap:14px; text-align:center;}
+  .attribution{color:var(--text-muted); font-size:13px; margin:0; line-height:1.5;}
+  .lhl-credit{display:inline-flex; align-items:center; gap:10px; text-decoration:none; color:var(--text-muted); font-size:13px; font-weight:600; transition:color .15s ease;}
+  .lhl-credit:hover{color:var(--spruce);}
+  .lhl-logo{height:26px; width:auto; display:block;}
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]) .lhl-logo{filter:invert(1);}
+  }
 
   .pin-guess{width:26px; height:36px;}
   .pin-true{width:26px; height:26px;}
@@ -99,12 +114,13 @@
 
 <div class="wrap">
   <header>
+    <p class="eyebrow">Colorado Geography Game</p>
     <h1>Colorado Compass</h1>
-    <p class="tagline">A real satellite view from somewhere in the state. Place your pin.</p>
+    <p class="tagline">How well do you know Colorado?<br>View a satellite photo from somewhere in the state. Place your pin.</p>
   </header>
 
   <div id="screen-start" class="panel">
-    <p>Five real aerial views, pulled at random from 40 spots across Colorado &mdash; reservoirs, ski resorts, mountain ranges, and small mountain towns among them (imagery courtesy of Esri). Click the reference map to drop your guess; the closer you land, the more points you score. 1,000 possible per round.</p>
+    <p>Five real aerial views, pulled at random from famous spots across Colorado &mdash; ski resorts, mountain ranges, lakes, rivers, and mountain towns (imagery courtesy of Esri). Click the reference map to drop your guess; the closer you land, the more points you score. 1,000 possible per round.</p>
     <button id="btn-start">Start the round</button>
     <div class="best" id="best-line"></div>
   </div>
@@ -156,9 +172,17 @@
     </table>
     <button id="btn-again">Play again</button>
   </div>
-
-  <footer>Satellite imagery &copy; Esri, Maxar, Earthstar Geographics &middot; Reference map tiles &copy; Esri &middot; distances are straight-line, in miles</footer>
 </div>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <p class="attribution">Satellite imagery &copy; Esri, Maxar, Earthstar Geographics &middot; Reference map tiles &copy; Esri &middot; distances are straight-line, in miles</p>
+    <a class="lhl-credit" href="https://leehilllabs.com" target="_blank" rel="noreferrer">
+      <img class="lhl-logo" src="assets/lhl-logo.png" alt="Lee Hill Labs" width="158" height="140">
+      <span>Created by Lee Hill Labs, Inc.</span>
+    </a>
+  </div>
+</footer>
 
 <script>
 (function(){
