@@ -167,11 +167,32 @@ bottom of the existing list rather than replacing it (e.g. v1.2.1 kept both v1.2
 bullets and added a third for the bug fix). A MINOR/MAJOR bump is what starts a fresh list.
 History so far: v1.0 original game, v1.1 Lee Hill Labs rebrand, v1.2 location pool expansion to 65
 spots, v1.2.1 fixed the "Lock in guess" double-submit bug, v1.2.2 the location image audit round
-(imagery-source fixes, pin corrections/reframing, Hanging Lake removed — pool now 64).
+(imagery-source fixes, pin corrections/reframing, Hanging Lake removed — pool now 64), v1.3 added
+shareable score cards.
 
 This is a player-facing changelog (what changed), separate from this dev log (why it changed).
 When shipping a future user-visible change, bump the version in two places: the `<summary>` text
 and the `.release-list` items inside `<details class="release-info">` in `index.html`.
+
+## Sharing results
+
+The final-score screen has a secondary **Share result** action beside the primary **Play again**
+action. It generates a purpose-built 1080×1080 PNG with the score, five-round breakdown, game
+branding, and canonical URL. This is drawn directly with the browser Canvas API rather than
+capturing the DOM, which keeps the output predictable and avoids a screenshot dependency.
+
+The card is prepared when the final screen appears so the later button click can immediately open
+the device's native share sheet while its user activation is still valid. Browsers that support
+sharing image files receive the PNG, caption, and URL through the Web Share API. Other browsers
+download the PNG and attempt to copy the caption and URL to the clipboard. The app records a
+`score_share` analytics event with the method and outcome, but cannot and does not identify the
+chosen share destination.
+
+The clickable/copied share URL is tagged with `utm_source=player_share`,
+`utm_medium=referral`, and `utm_campaign=score_share`. Recipient sessions therefore appear in
+GA4 Traffic acquisition as `player_share / referral` under the `score_share` campaign, even when
+the destination app does not preserve referrer information. The clean, untagged domain remains
+printed on the score-card image for readability.
 
 ## Bug: double-submitting a guess
 
@@ -204,7 +225,8 @@ twice even if something else re-triggers the click handler.
 
 Google Analytics 4 is installed directly in `index.html` using the CO Compass web stream
 (`G-NMP21XF9R0`). In addition to GA4's standard page view, the game sends `game_start`,
-`round_start`, `guess_submitted`, `game_complete`, and `play_again` events. Event parameters
+`round_start`, `guess_submitted`, `game_complete`, `play_again`, and `score_share` events. Event
+parameters
 cover game version, round number, scores, distances, elapsed time, and replay status. Exact
 target and guessed coordinates are deliberately excluded.
 
