@@ -40,9 +40,9 @@ the game draws 5 locations per game from a curated pool, randomly ordered. The p
 since the original 40; homepage copy deliberately says "famous spots" rather than citing a count,
 so it doesn't go stale as the pool changes.
 
-Current pool (64 locations):
+Current pool (65 locations):
 
-- 13 landmarks/parks
+- 14 landmarks/parks
 - 8 bodies of water
 - 16 ski resorts
 - 12 mountain ranges/peaks
@@ -168,7 +168,8 @@ bullets and added a third for the bug fix). A MINOR/MAJOR bump is what starts a 
 History so far: v1.0 original game, v1.1 Lee Hill Labs rebrand, v1.2 location pool expansion to 65
 spots, v1.2.1 fixed the "Lock in guess" double-submit bug, v1.2.2 the location image audit round
 (imagery-source fixes, pin corrections/reframing, Hanging Lake removed — pool now 64), v1.3 added
-shareable score cards, and v1.3.1 added an explicit desktop download action.
+shareable score cards, v1.3.1 added an explicit desktop download action, and v1.3.2 added new
+locations (pool now 65).
 
 This is a player-facing changelog (what changed), separate from this dev log (why it changed).
 When shipping a future user-visible change, bump the version in two places: the `<summary>` text
