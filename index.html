@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <title>Colorado Compass</title>
-<meta name="description" content="How well do you know Colorado? View a satellite photo from somewhere in the state and place your pin.">
+<meta name="description" content="How well do you know Colorado? Identify five satellite views in Easy or Hard mode.">
 <meta property="og:title" content="Colorado Compass">
-<meta property="og:description" content="How well do you know Colorado? View a satellite photo from somewhere in the state and place your pin.">
+<meta property="og:description" content="How well do you know Colorado? Identify five satellite views in Easy or Hard mode.">
 <meta property="og:image" content="https://cocompass.leehilllabs.com/assets/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -15,7 +15,7 @@
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Colorado Compass">
-<meta name="twitter:description" content="How well do you know Colorado? View a satellite photo from somewhere in the state and place your pin.">
+<meta name="twitter:description" content="How well do you know Colorado? Identify five satellite views in Easy or Hard mode.">
 <meta name="twitter:image" content="https://cocompass.leehilllabs.com/assets/og-image.png">
 <!-- Google tag (gtag.js) -->
 <script>
@@ -116,6 +116,31 @@
   .panel p{color:var(--text-muted); font-size:16px; max-width:50ch; margin:0 auto 22px; line-height:1.5;}
   .best{font-size:15px; color:var(--text-muted); margin-top:16px;}
 
+  .mode-options{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-top:26px; text-align:left;}
+  .mode-card{
+    display:flex; flex-direction:column; align-items:flex-start; min-height:190px; padding:22px;
+    background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:10px;
+  }
+  .mode-card:not(:disabled):hover{background:var(--surface-2); color:var(--text); border-color:var(--spruce); transform:translateY(-2px);}
+  .mode-name{font-size:21px; font-weight:700; color:var(--spruce);}
+  .mode-description{font-size:14px; font-weight:400; line-height:1.5; color:var(--text-muted); margin:8px 0 18px;}
+  .mode-cta{margin-top:auto; font-size:15px; font-weight:700; color:var(--spruce);}
+  .mode-best{margin-top:7px; font-size:12px; font-weight:500; color:var(--text-muted);}
+  .mode-label{color:var(--rust);}
+
+  .answer-area{padding-top:2px;}
+  .answer-options{display:grid; gap:10px; margin:0; padding:0; border:0;}
+  .answer-option{
+    display:flex; align-items:center; gap:12px; width:100%; padding:15px 16px;
+    border:1px solid var(--border); border-radius:8px; cursor:pointer; background:var(--surface);
+    font-size:16px; font-weight:500; transition:border-color .15s ease, background-color .15s ease;
+  }
+  .answer-option:hover{border-color:var(--spruce); background:var(--surface-2);}
+  .answer-option:has(input:checked){border-color:var(--spruce); background:var(--surface-2); box-shadow:0 0 0 1px var(--spruce);}
+  .answer-option input{width:20px; height:20px; margin:0; accent-color:var(--spruce); flex:0 0 auto;}
+  .answer-option.correct{border-color:var(--spruce); background:color-mix(in srgb, var(--spruce) 12%, var(--surface));}
+  .answer-option.incorrect{border-color:var(--rust); background:color-mix(in srgb, var(--rust) 10%, var(--surface));}
+
   .breakdown{width:100%; border-collapse:collapse; margin:22px 0; text-align:left; font-size:15px;}
   .breakdown th{font-weight:600; color:var(--text-muted); text-align:left; padding:6px 8px; border-bottom:1px solid var(--border); font-size:12px; text-transform:uppercase; letter-spacing:.06em;}
   .breakdown td{padding:7px 8px; border-bottom:1px solid var(--border);}
@@ -156,6 +181,10 @@
 
   .pin-guess{width:26px; height:36px;}
   .pin-true{width:26px; height:26px;}
+  @media (max-width:640px){
+    .mode-options{grid-template-columns:1fr;}
+    .mode-card{min-height:0;}
+  }
 </style>
 </head>
 <body>
@@ -164,18 +193,31 @@
   <header>
     <p class="eyebrow">Colorado Geography Game</p>
     <h1>Colorado Compass</h1>
-    <p class="tagline">How well do you know Colorado?<br>View a satellite photo from somewhere in the state. Place your pin.</p>
+    <p class="tagline">How well do you know Colorado?<br>View a satellite photo and figure out where it was taken.</p>
   </header>
 
   <div id="screen-start" class="panel">
-    <p>Five real aerial views, pulled at random from famous spots across Colorado &mdash; ski resorts, mountain ranges, lakes, rivers, and mountain towns (imagery courtesy of Esri). Click the reference map to drop your guess; the closer you land, the more points you score. 1,000 possible per round.</p>
-    <button id="btn-start">Start the round</button>
-    <div class="best" id="best-line"></div>
+    <p>Five real aerial views, pulled at random from famous spots across Colorado &mdash; ski resorts, mountain ranges, lakes, rivers, towns, and cities. Choose how you want to play. Every round is worth up to 1,000 points.</p>
+    <div class="mode-options">
+      <button class="mode-card" type="button" data-mode="easy">
+        <span class="mode-name">Easy mode</span>
+        <span class="mode-description">Pick the location from five similar places. A correct answer earns all 1,000 points.</span>
+        <span class="mode-cta">Play Easy &rarr;</span>
+        <span class="mode-best" id="best-easy"></span>
+      </button>
+      <button class="mode-card" type="button" data-mode="hard">
+        <span class="mode-name">Hard mode</span>
+        <span class="mode-description">Place a pin anywhere on the Colorado map. The closer you land, the more points you score.</span>
+        <span class="mode-cta">Play Hard &rarr;</span>
+        <span class="mode-best" id="best-hard"></span>
+      </button>
+    </div>
   </div>
 
   <div id="screen-game" class="hidden">
     <div class="hud">
       <span>Round <b id="hud-round">1</b> of 5</span>
+      <span class="mode-label" id="hud-mode">Easy mode</span>
       <span class="score">Score: <b id="hud-score">0</b></span>
     </div>
 
@@ -187,10 +229,19 @@
 
       <div class="map-area">
         <p class="map-prompt">Where in Colorado is this?</p>
-        <div id="guess-map"></div>
-        <div class="actions" id="guess-actions">
-          <span class="hint" id="map-hint">Click anywhere on the map to place a pin.</span>
-          <button id="btn-submit" disabled>Lock in guess</button>
+        <div id="hard-guess" class="hidden">
+          <div id="guess-map"></div>
+          <div class="actions" id="guess-actions">
+            <span class="hint" id="map-hint">Click anywhere on the map to place a pin.</span>
+            <button id="btn-submit" disabled>Lock in guess</button>
+          </div>
+        </div>
+        <div id="easy-guess" class="answer-area hidden">
+          <fieldset class="answer-options" id="answer-options" aria-label="Possible locations"></fieldset>
+          <div class="actions" id="answer-actions">
+            <span class="hint">Choose one answer.</span>
+            <button id="btn-submit-easy" disabled>Lock in answer</button>
+          </div>
         </div>
       </div>
 
@@ -211,7 +262,7 @@
   </div>
 
   <div id="screen-final" class="hidden panel">
-    <div class="final-total-label">Final score</div>
+    <div class="final-total-label" id="final-mode">Final score</div>
     <div class="final-total" id="final-total">0</div>
     <div class="final-total-label">out of 5,000</div>
     <table class="breakdown" id="final-table">
@@ -220,6 +271,7 @@
     </table>
     <div class="final-actions">
       <button id="btn-again">Play again</button>
+      <button id="btn-change-mode" class="button-secondary">Change mode</button>
       <button id="btn-share" class="button-secondary">Share result</button>
       <button id="btn-download" class="button-secondary">Download PNG</button>
     </div>
@@ -227,11 +279,13 @@
   </div>
 
   <details class="release-info">
-    <summary>Release notes &mdash; v1.3.2</summary>
+    <summary>Release notes &mdash; v2.0.0</summary>
     <ul class="release-list">
-      <li>Added a shareable score card &mdash; send your result with your device's share menu, or download it as an image.</li>
-      <li>Added an always-available Download PNG button for desktop browsers whose share menu does not offer image saving.</li>
-      <li>New locations added, including a new group of airports, based on player requests.</li>
+      <li>Two ways to play: choose Easy mode for multiple choice or Hard mode for the original map challenge.</li>
+      <li>Easy mode gives you five similar, same-category locations. Pick the correct answer to earn 1,000 points.</li>
+      <li>Hard mode keeps the classic distance scoring: place your pin anywhere in Colorado, with up to 1,000 points for a perfect guess.</li>
+      <li>Personal bests are now tracked separately for Easy and Hard mode. Existing scores carry forward as Hard-mode scores.</li>
+      <li>Final results and shareable score cards now show which mode you played.</li>
     </ul>
   </details>
 </div>
@@ -253,7 +307,7 @@
   const CO_SW = [37.0, -109.05];
   const CO_NE = [41.0, -102.05];
   const CO_BOUNDS = L.latLngBounds(CO_SW, CO_NE);
-  const GAME_VERSION = '1.3.2';
+  const GAME_VERSION = '2.0.0';
   const ROUNDS_PER_GAME = 5;
   const SHARE_URL = 'https://cocompass.leehilllabs.com/?utm_source=player_share&utm_medium=referral&utm_campaign=score_share';
   const GA_MEASUREMENT_ID = 'G-NMP21XF9R0';
@@ -316,7 +370,8 @@
     return Math.max(0, Math.min(1000, Math.round(1000 * Math.exp(-distanceMiles / 55))));
   }
 
-  const LOCATIONS = [
+  const LOCATION_GROUPS = [
+    { category:'landmarks_parks', locations:[
     { name:"Maroon Bells", lat:39.0708, lon:-106.9890, zoom:14,
       fact:"Near Aspen, these two 14,000-foot peaks reflected in Maroon Lake make up one of the most photographed spots in North America." },
     { name:"Garden of the Gods", lat:38.8783, lon:-104.8719, zoom:15,
@@ -332,8 +387,6 @@
       fact:"Ancestral Puebloans built multi-story stone dwellings into these canyon alcoves between roughly 600 and 1300 CE." },
     { name:"Red Rocks Amphitheatre", lat:39.6654, lon:-105.2057, zoom:15,
       fact:"Two 300-foot sandstone monoliths flank this open-air venue near Morrison, in use as a concert stage since the 1930s." },
-    { name:"Downtown Denver", lat:39.7457, lon:-104.9930, zoom:15,
-      fact:"The Mile High City's skyline sits at exactly 5,280 feet, with the Rockies rising just to the west." },
     { name:"Bear Lake, Rocky Mountain NP", lat:40.3123, lon:-105.6486, zoom:14,
       tiles:{ url:'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}', attribution:'Imagery &copy; USGS The National Map' },
       fact:"This subalpine lake near Estes Park, ringed by spruce and jagged peaks, sits at about 9,450 feet." },
@@ -353,8 +406,9 @@
     { name:"Montrose Regional Airport", lat:38.5068, lon:-107.8970, zoom:14,
       fact:"Set at about 5,800 feet in the Uncompahgre Valley, this is a common jet gateway for the San Juan Mountains, including Telluride and Ouray." },
     { name:"Eagle County Regional Airport", lat:39.6451, lon:-106.9170, zoom:14,
-      fact:"At roughly 6,500 feet near Gypsum, it is the main airport for the Vail and Beaver Creek ski resorts, with winter flights from cities across the country." },
-
+      fact:"At roughly 6,500 feet near Gypsum, it is the main airport for the Vail and Beaver Creek ski resorts, with winter flights from cities across the country." }
+    ]},
+    { category:'lakes_reservoirs', locations:[
     { name:"Dillon Reservoir", lat:39.6208, lon:-106.0453, zoom:13,
       fact:"This reservoir near Frisco and Silverthorne holds Denver's drinking water, piped more than 23 miles through the mountains via the Roberts Tunnel." },
     { name:"Gross Reservoir", lat:39.9375, lon:-105.3350, zoom:13,
@@ -370,8 +424,9 @@
     { name:"Turquoise Lake", lat:39.2830, lon:-106.4230, zoom:13,
       fact:"A reservoir near Leadville ringed by 14,000-foot peaks, sitting at over 9,800 feet, one of the highest lakes of its size in the country." },
     { name:"Lake San Cristobal", lat:37.9803, lon:-107.2842, zoom:13,
-      fact:"Colorado's second-largest natural lake, formed about 700 years ago when the Slumgullion Earthflow landslide dammed the Lake Fork of the Gunnison River." },
-
+      fact:"Colorado's second-largest natural lake, formed about 700 years ago when the Slumgullion Earthflow landslide dammed the Lake Fork of the Gunnison River." }
+    ]},
+    { category:'ski_resorts', locations:[
     { name:"Vail", lat:39.6300, lon:-106.3742, zoom:13,
       fact:"One of the largest single ski mountains in North America, its famous Back Bowls open up nearly 3,000 acres of terrain." },
     { name:"Aspen Snowmass", lat:39.1867, lon:-106.8175, zoom:13,
@@ -404,8 +459,9 @@
     { name:"Powderhorn", lat:39.0660, lon:-108.1420, zoom:13,
       fact:"Colorado's only resort on the Western Slope's high plateau country, built on the flank of the Grand Mesa, the largest flat-topped mountain in the world." },
     { name:"Crested Butte Mountain Resort", lat:38.8992, lon:-106.9647, zoom:13,
-      fact:"Home to some of the steepest inbounds terrain in North America, including the Extreme Limits zone below the 12,162-foot summit of Mount Crested Butte." },
-
+      fact:"Home to some of the steepest inbounds terrain in North America, including the Extreme Limits zone below the 12,162-foot summit of Mount Crested Butte." }
+    ]},
+    { category:'mountains_wilderness', locations:[
     { name:"Longs Peak", lat:40.2549, lon:-105.6151, zoom:12,
       tiles:{ url:'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}', attribution:'Imagery &copy; USGS The National Map' },
       fact:"The northernmost 14,000-foot peak in the Rockies and the tallest in Rocky Mountain National Park, with a distinctive flat summit." },
@@ -430,8 +486,9 @@
     { name:"Blanca Peak", lat:37.5775, lon:-105.4856, zoom:12,
       fact:"At 14,351 feet, the highest point in the Sangre de Cristo Range and sacred to the Navajo as one of four mountains marking the boundaries of their traditional homeland." },
     { name:"La Plata Peak", lat:39.0294, lon:-106.4728, zoom:12,
-      fact:"Colorado's fifth-highest summit at 14,336 feet, rising above the Lake Creek valley near Twin Lakes." },
-
+      fact:"Colorado's fifth-highest summit at 14,336 feet, rising above the Lake Creek valley near Twin Lakes." }
+    ]},
+    { category:'towns_cities', locations:[
     { name:"Crested Butte", lat:38.8697, lon:-106.9878, zoom:14,
       fact:"Once a coal mining town, it's now known as Colorado's wildflower capital and a hub for extreme mountain biking." },
     { name:"Telluride", lat:37.9375, lon:-107.8123, zoom:14,
@@ -454,6 +511,8 @@
     { name:"Estes Park", lat:40.3772, lon:-105.5217, zoom:14,
       fact:"The gateway town to Rocky Mountain National Park, also known for the Stanley Hotel, whose 1909 grandeur inspired Stephen King to write 'The Shining.'" },
 
+    { name:"Downtown Denver", lat:39.7457, lon:-104.9930, zoom:15,
+      fact:"The Mile High City's skyline sits at exactly 5,280 feet, with the Rockies rising just to the west." },
     { name:"Fort Collins", lat:40.5853, lon:-105.0844, zoom:14,
       fact:"Home to Colorado State University, and per capita one of the most brewery-dense cities in the country." },
     { name:"Grand Junction", lat:39.0639, lon:-108.5506, zoom:14,
@@ -464,7 +523,12 @@
       fact:"Founded in 1870 as a utopian agricultural colony by journalist Nathan Meeker, on land promoted by New York Tribune editor Horace Greeley." },
     { name:"Boulder", lat:40.0150, lon:-105.2705, zoom:14,
       fact:"Ringed by the dramatic tilted sandstone slabs of the Flatirons, and home to the flagship campus of the University of Colorado." }
+    ]}
   ];
+
+  const LOCATIONS = LOCATION_GROUPS.flatMap(group=>
+    group.locations.map(location=>({...location, category:group.category}))
+  );
 
   function guessIcon(){
     return L.divIcon({
@@ -484,6 +548,7 @@
 
   let order = [], round = 0, score = 0, results = [];
   let guessMap, photoMap, guessLayer, guessLatLon = null;
+  let gameMode = null, easyChoice = null;
   let gameStartedAt = 0, roundStartedAt = 0, gamesStarted = 0;
   let shareImagePromise = null;
 
@@ -491,14 +556,19 @@
 
   function loadBest(){
     try{
-      const v = localStorage.getItem('coCompassBest');
-      if(v){ el('best-line').textContent = 'Your best so far: ' + v + ' / 5,000'; }
+      const legacyHard = localStorage.getItem('coCompassBest');
+      const easy = localStorage.getItem('coCompassBestEasy');
+      const hard = localStorage.getItem('coCompassBestHard') || legacyHard;
+      el('best-easy').textContent = easy ? 'Best: ' + easy + ' / 5,000' : 'No score yet';
+      el('best-hard').textContent = hard ? 'Best: ' + hard + ' / 5,000' : 'No score yet';
     }catch(e){}
   }
-  function saveBest(total){
+  function saveBest(total, mode){
     try{
-      const prev = parseInt(localStorage.getItem('coCompassBest') || '0', 10);
-      if(total > prev){ localStorage.setItem('coCompassBest', String(total)); }
+      const key = mode === 'easy' ? 'coCompassBestEasy' : 'coCompassBestHard';
+      const legacyHard = mode === 'hard' ? localStorage.getItem('coCompassBest') : null;
+      const prev = parseInt(localStorage.getItem(key) || legacyHard || '0', 10);
+      if(total > prev){ localStorage.setItem(key, String(total)); }
     }catch(e){}
   }
 
@@ -528,7 +598,7 @@
     guessLayer = L.layerGroup().addTo(guessMap);
 
     guessMap.on('click', function(e){
-      if(!el('result-block').classList.contains('hidden')) return;
+      if(gameMode !== 'hard' || !el('result-block').classList.contains('hidden')) return;
       guessLatLon = e.latlng;
       guessLayer.clearLayers();
       L.marker(guessLatLon, {icon: guessIcon()}).addTo(guessLayer);
@@ -555,7 +625,8 @@
     }).addTo(photoMap);
   }
 
-  function startGame(){
+  function startGame(mode){
+    gameMode = mode;
     const isReplay = gamesStarted > 0;
     gamesStarted++;
     gameStartedAt = Date.now();
@@ -563,22 +634,61 @@
     round = 0; score = 0; results = [];
     trackEvent('game_start', {
       game_version: GAME_VERSION,
+      game_mode: gameMode,
       rounds_planned: ROUNDS_PER_GAME,
       is_replay: isReplay ? 1 : 0
     });
     el('screen-start').classList.add('hidden');
     el('screen-final').classList.add('hidden');
     el('screen-game').classList.remove('hidden');
-    initGuessMap();
+    el('hud-mode').textContent = gameMode === 'easy' ? 'Easy mode' : 'Hard mode';
+    el('easy-guess').classList.toggle('hidden', gameMode !== 'easy');
+    el('hard-guess').classList.toggle('hidden', gameMode !== 'hard');
+    if(gameMode === 'hard') initGuessMap();
     setTimeout(startRound, 30); // let layout settle before Leaflet measures itself
+  }
+
+  function buildEasyAnswers(correctIndex){
+    const category = LOCATIONS[correctIndex].category;
+    const distractors = shuffledIndices(LOCATIONS.length)
+      .filter(index=>index !== correctIndex && LOCATIONS[index].category === category)
+      .slice(0, 4);
+    const choices = [correctIndex, ...distractors];
+    for(let i=choices.length-1;i>0;i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [choices[i], choices[j]] = [choices[j], choices[i]];
+    }
+
+    const options = el('answer-options');
+    options.innerHTML = '';
+    options.dataset.category = category;
+    choices.forEach(index=>{
+      const label = document.createElement('label');
+      label.className = 'answer-option';
+      const input = document.createElement('input');
+      input.type = 'radio';
+      input.name = 'easy-answer';
+      input.value = String(index);
+      input.dataset.category = LOCATIONS[index].category;
+      const text = document.createElement('span');
+      text.textContent = LOCATIONS[index].name;
+      input.addEventListener('change', ()=>{
+        easyChoice = index;
+        el('btn-submit-easy').disabled = false;
+      });
+      label.append(input, text);
+      options.appendChild(label);
+    });
   }
 
   function startRound(){
     guessLatLon = null;
+    easyChoice = null;
     roundStartedAt = Date.now();
     const loc = LOCATIONS[order[round]];
     trackEvent('round_start', {
       game_version: GAME_VERSION,
+      game_mode: gameMode,
       round_number: round + 1,
       rounds_total: ROUNDS_PER_GAME
     });
@@ -587,12 +697,21 @@
     el('photo-caption').textContent = 'Scene ' + (round+1) + ' of ' + ROUNDS_PER_GAME;
     el('map-hint').textContent = 'Click anywhere on the map to place a pin.';
     el('btn-submit').disabled = true;
+    el('btn-submit-easy').disabled = true;
     el('guess-actions').classList.remove('hidden');
+    el('answer-actions').classList.remove('hidden');
     el('result-block').classList.add('hidden');
-    guessLayer.clearLayers();
-    guessMap.fitBounds(CO_BOUNDS, {padding:[6,6]});
+    if(gameMode === 'hard'){
+      guessLayer.clearLayers();
+      guessMap.fitBounds(CO_BOUNDS, {padding:[6,6]});
+    }else{
+      buildEasyAnswers(order[round]);
+    }
     buildPhotoMap(loc);
-    setTimeout(()=>{ guessMap.invalidateSize(); photoMap.invalidateSize(); }, 30);
+    setTimeout(()=>{
+      if(gameMode === 'hard') guessMap.invalidateSize();
+      photoMap.invalidateSize();
+    }, 30);
   }
 
   function submitGuess(){
@@ -604,6 +723,7 @@
     results.push({name: loc.name, dist, pts});
     trackEvent('guess_submitted', {
       game_version: GAME_VERSION,
+      game_mode: gameMode,
       round_number: round + 1,
       distance_miles: Number(dist.toFixed(1)),
       points: pts,
@@ -626,34 +746,79 @@
     el('btn-next').textContent = (round >= ROUNDS_PER_GAME - 1) ? 'See final score' : 'Next round';
   }
 
+  function submitEasyAnswer(){
+    if(easyChoice === null || !el('result-block').classList.contains('hidden')) return;
+    const correctIndex = order[round];
+    const loc = LOCATIONS[correctIndex];
+    const selected = LOCATIONS[easyChoice];
+    const correct = easyChoice === correctIndex;
+    const pts = correct ? 1000 : 0;
+    score += pts;
+    results.push({name:loc.name, dist:null, pts, correct, selectedName:selected.name});
+    trackEvent('guess_submitted', {
+      game_version: GAME_VERSION,
+      game_mode: gameMode,
+      round_number: round + 1,
+      answer_correct: correct ? 1 : 0,
+      points: pts,
+      current_score: score,
+      round_elapsed_seconds: Math.round((Date.now() - roundStartedAt) / 1000)
+    });
+
+    el('answer-options').querySelectorAll('.answer-option').forEach(label=>{
+      const input = label.querySelector('input');
+      input.disabled = true;
+      const index = Number(input.value);
+      if(index === correctIndex) label.classList.add('correct');
+      if(index === easyChoice && !correct) label.classList.add('incorrect');
+    });
+    el('result-place').textContent = loc.name;
+    el('result-fact').textContent = loc.fact;
+    el('result-pts').textContent = '+' + pts;
+    el('result-dist').textContent = correct ? 'Correct answer' : 'You chose ' + selected.name;
+    el('result-block').classList.remove('hidden');
+    el('answer-actions').classList.add('hidden');
+    el('hud-score').textContent = String(score);
+    el('btn-next').textContent = (round >= ROUNDS_PER_GAME - 1) ? 'See final score' : 'Next round';
+  }
+
   function nextRound(){
     round++;
     if(round >= ROUNDS_PER_GAME){ showFinal(); } else { startRound(); }
   }
 
   function showFinal(){
-    const totalDistance = results.reduce((sum, result)=>sum + result.dist, 0);
+    const totalDistance = gameMode === 'hard' ? results.reduce((sum, result)=>sum + result.dist, 0) : null;
     trackEvent('game_complete', {
       game_version: GAME_VERSION,
+      game_mode: gameMode,
       total_score: score,
-      total_distance_miles: Number(totalDistance.toFixed(1)),
+      ...(totalDistance === null ? {} : {total_distance_miles:Number(totalDistance.toFixed(1))}),
       rounds_completed: results.length,
       game_elapsed_seconds: Math.round((Date.now() - gameStartedAt) / 1000)
     });
     el('screen-game').classList.add('hidden');
     el('screen-final').classList.remove('hidden');
+    el('final-mode').textContent = (gameMode === 'easy' ? 'Easy' : 'Hard') + ' mode final score';
     el('final-total').textContent = String(score);
+    el('btn-again').textContent = 'Play ' + (gameMode === 'easy' ? 'Easy' : 'Hard') + ' again';
     el('share-status').textContent = '';
     el('btn-share').disabled = false;
     el('btn-share').textContent = 'Share result';
     el('btn-download').disabled = false;
     el('btn-download').textContent = 'Download PNG';
-    saveBest(score);
+    saveBest(score, gameMode);
     const tbody = el('final-tbody');
     tbody.innerHTML = '';
+    el('final-table').querySelector('thead tr').innerHTML = gameMode === 'easy'
+      ? '<th>Round</th><th>Location</th><th>Result</th><th>Points</th>'
+      : '<th>Round</th><th>Location</th><th>Distance</th><th>Points</th>';
     results.forEach((r,i)=>{
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${i+1}</td><td>${r.name}</td><td>${r.dist.toFixed(1)} mi</td><td>${r.pts}</td>`;
+      const outcome = gameMode === 'easy'
+        ? (r.correct ? 'Correct' : 'Incorrect')
+        : r.dist.toFixed(1) + ' mi';
+      tr.innerHTML = `<td>${i+1}</td><td>${r.name}</td><td>${outcome}</td><td>${r.pts}</td>`;
       tbody.appendChild(tr);
     });
     loadBest();
@@ -697,7 +862,7 @@
     roundedRect(ctx, 70, 208, 940, 260, 28);
     ctx.fillStyle = '#5C6661';
     ctx.font = '500 27px Inter, Arial, sans-serif';
-    ctx.fillText('FINAL SCORE', 540, 270);
+    ctx.fillText(gameMode.toUpperCase() + ' MODE • FINAL SCORE', 540, 270);
     ctx.fillStyle = '#295C52';
     ctx.font = '700 110px Inter, Arial, sans-serif';
     ctx.fillText(score.toLocaleString(), 540, 382);
@@ -711,7 +876,7 @@
     ctx.fillText('ROUND', 88, 535);
     ctx.fillText('LOCATION', 190, 535);
     ctx.textAlign = 'right';
-    ctx.fillText('DISTANCE', 830, 535);
+    ctx.fillText(gameMode === 'easy' ? 'ANSWER' : 'DISTANCE', 830, 535);
     ctx.fillText('POINTS', 990, 535);
 
     results.forEach((result, index)=>{
@@ -733,7 +898,10 @@
       ctx.fillStyle = '#5C6661';
       ctx.font = '500 25px Inter, Arial, sans-serif';
       ctx.textAlign = 'right';
-      ctx.fillText(result.dist.toFixed(1) + ' mi', 830, y);
+      const outcome = gameMode === 'easy'
+        ? (result.correct ? 'Correct' : 'Wrong')
+        : result.dist.toFixed(1) + ' mi';
+      ctx.fillText(outcome, 830, y);
       ctx.fillStyle = '#295C52';
       ctx.font = '700 27px Inter, Arial, sans-serif';
       ctx.fillText(result.pts.toLocaleString(), 990, y);
@@ -763,7 +931,7 @@
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'colorado-compass-score-' + score + '.png';
+    link.download = 'colorado-compass-' + gameMode + '-score-' + score + '.png';
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -794,6 +962,7 @@
     }
     trackEvent('score_share', {
       game_version: GAME_VERSION,
+      game_mode: gameMode,
       total_score: score,
       method: afterNativeFailure ? 'native_fallback_download' : 'download',
       outcome: 'completed'
@@ -803,14 +972,15 @@
   async function shareResult(){
     const button = el('btn-share');
     const status = el('share-status');
-    const caption = 'I scored ' + score.toLocaleString() + ' out of 5,000 on Colorado Compass. How well do you know Colorado?';
+    const modeName = gameMode === 'easy' ? 'Easy' : 'Hard';
+    const caption = 'I scored ' + score.toLocaleString() + ' out of 5,000 in ' + modeName + ' mode on Colorado Compass. How well do you know Colorado?';
     button.disabled = true;
     button.textContent = 'Preparing\u2026';
     status.textContent = '';
 
     try{
       const blob = await (shareImagePromise || buildShareImage());
-      const file = new File([blob], 'colorado-compass-score-' + score + '.png', {type:'image/png'});
+      const file = new File([blob], 'colorado-compass-' + gameMode + '-score-' + score + '.png', {type:'image/png'});
       const canShareFile = typeof navigator.share === 'function' &&
         typeof navigator.canShare === 'function' &&
         navigator.canShare({files:[file]});
@@ -825,11 +995,11 @@
             files: [file]
           });
           status.textContent = 'Score shared.';
-          trackEvent('score_share', {game_version:GAME_VERSION, total_score:score, method:'native_file', outcome:'completed'});
+          trackEvent('score_share', {game_version:GAME_VERSION, game_mode:gameMode, total_score:score, method:'native_file', outcome:'completed'});
         }catch(error){
           if(error && error.name === 'AbortError'){
             status.textContent = 'Sharing canceled.';
-            trackEvent('score_share', {game_version:GAME_VERSION, total_score:score, method:'native_file', outcome:'canceled'});
+            trackEvent('score_share', {game_version:GAME_VERSION, game_mode:gameMode, total_score:score, method:'native_file', outcome:'canceled'});
           }else{
             console.error('Native score sharing failed; using download fallback', error);
             await useDownloadFallback(blob, caption, true);
@@ -842,7 +1012,7 @@
       console.error('Could not share score', error);
       status.textContent = 'We couldn\u2019t prepare the score card. Please try again.';
       shareImagePromise = null;
-      trackEvent('score_share', {game_version:GAME_VERSION, total_score:score, method:'unknown', outcome:'failed'});
+      trackEvent('score_share', {game_version:GAME_VERSION, game_mode:gameMode, total_score:score, method:'unknown', outcome:'failed'});
     }finally{
       button.disabled = false;
       button.textContent = 'Share result';
@@ -862,6 +1032,7 @@
       status.textContent = 'Score card downloaded.';
       trackEvent('score_share', {
         game_version: GAME_VERSION,
+        game_mode: gameMode,
         total_score: score,
         method: 'explicit_download',
         outcome: 'completed'
@@ -872,6 +1043,7 @@
       shareImagePromise = null;
       trackEvent('score_share', {
         game_version: GAME_VERSION,
+        game_mode: gameMode,
         total_score: score,
         method: 'explicit_download',
         outcome: 'failed'
@@ -885,15 +1057,31 @@
   function playAgain(){
     trackEvent('play_again', {
       game_version: GAME_VERSION,
+      game_mode: gameMode,
       previous_score: score
     });
-    startGame();
+    startGame(gameMode);
   }
 
-  el('btn-start').addEventListener('click', startGame);
+  function changeMode(){
+    trackEvent('change_mode', {
+      game_version: GAME_VERSION,
+      previous_mode: gameMode,
+      previous_score: score
+    });
+    el('screen-final').classList.add('hidden');
+    el('screen-start').classList.remove('hidden');
+    loadBest();
+  }
+
+  document.querySelectorAll('[data-mode]').forEach(button=>{
+    button.addEventListener('click', ()=>startGame(button.dataset.mode));
+  });
   el('btn-submit').addEventListener('click', submitGuess);
+  el('btn-submit-easy').addEventListener('click', submitEasyAnswer);
   el('btn-next').addEventListener('click', nextRound);
   el('btn-again').addEventListener('click', playAgain);
+  el('btn-change-mode').addEventListener('click', changeMode);
   el('btn-share').addEventListener('click', shareResult);
   el('btn-download').addEventListener('click', downloadResult);
   el('analytics-toggle').addEventListener('click', toggleAnalytics);

@@ -6,9 +6,34 @@ have to rediscover the reasoning from scratch.
 
 ## Core concept
 
-Each round shows a real aerial/satellite view of a Colorado location. The player drops a pin on
-a reference map of the state; distance from the true location determines the score (up to 1,000
-points/round, exponential decay, 5 rounds/game).
+Each round shows a real aerial/satellite view of a Colorado location. A game has 5 rounds worth
+up to 1,000 points each. Players choose a mode before starting:
+
+- **Easy:** choose the location from five answers. Correct is worth 1,000 points; wrong is 0.
+- **Hard:** drop a pin on a reference map of the state. Distance from the true location determines
+  the score using exponential decay.
+
+The two modes share the same location pool and round flow, but keep separate local best scores.
+Existing `coCompassBest` scores from before v2 are treated as Hard-mode scores.
+
+## Game modes
+
+The v2 landing page explains both modes and starts the selected version directly. The photo and
+result areas are shared; only the guessing control changes. Easy mode builds four random
+distractors from the correct location's category, adds the real location, and shuffles all five.
+Hard mode preserves the original Leaflet map interaction and distance scoring unchanged.
+
+Categories are encoded on the flattened location records from five named groups rather than
+inferred from array position: `landmarks_parks`, `lakes_reservoirs`, `ski_resorts`,
+`mountains_wilderness`, and `towns_cities`. Mountain towns and cities are intentionally combined;
+Downtown Denver moved from the old landmarks grouping into `towns_cities`. Airports remain in
+`landmarks_parks` because the pool has only three, too few to generate four airport distractors.
+Every category has at least eight entries, so Easy mode can always provide four same-category
+distractors.
+
+Final breakdowns and generated share cards identify the mode. Easy results show whether the
+answer was correct instead of presenting a map distance, and analytics events include
+`game_mode` so the two experiences can be evaluated independently.
 
 ## Why it's a downloadable file, not a claude.ai artifact
 
@@ -42,12 +67,12 @@ so it doesn't go stale as the pool changes.
 
 Current pool (68 locations):
 
-- 17 landmarks/parks
+- 16 landmarks/parks
 - 8 bodies of water
 - 16 ski resorts
 - 12 mountain ranges/peaks
-- 10 mountain towns
-- 5 cities (new category — Fort Collins, Grand Junction, Pueblo, Greeley, Boulder)
+- 16 towns/cities (10 mountain towns, Downtown Denver, Fort Collins, Grand Junction, Pueblo,
+  Greeley, and Boulder)
 
 Known limitation: several of these cluster geographically (Summit County ski towns; the San
 Juans), so a wrong guess in the right general area can still score well. Not fixed as of this
@@ -169,7 +194,8 @@ History so far: v1.0 original game, v1.1 Lee Hill Labs rebrand, v1.2 location po
 spots, v1.2.1 fixed the "Lock in guess" double-submit bug, v1.2.2 the location image audit round
 (imagery-source fixes, pin corrections/reframing, Hanging Lake removed — pool now 64), v1.3 added
 shareable score cards, v1.3.1 added an explicit desktop download action, and v1.3.2 added new
-locations, including a group of airports (pool now 68).
+locations, including a group of airports (pool now 68). v2.0 added Easy multiple-choice and Hard
+map modes, mode-specific best scores, and mode-aware results and sharing.
 
 This is a player-facing changelog (what changed), separate from this dev log (why it changed).
 When shipping a future user-visible change, bump the version in two places: the `<summary>` text
