@@ -168,7 +168,7 @@ bullets and added a third for the bug fix). A MINOR/MAJOR bump is what starts a 
 History so far: v1.0 original game, v1.1 Lee Hill Labs rebrand, v1.2 location pool expansion to 65
 spots, v1.2.1 fixed the "Lock in guess" double-submit bug, v1.2.2 the location image audit round
 (imagery-source fixes, pin corrections/reframing, Hanging Lake removed — pool now 64), v1.3 added
-shareable score cards.
+shareable score cards, and v1.3.1 added an explicit desktop download action.
 
 This is a player-facing changelog (what changed), separate from this dev log (why it changed).
 When shipping a future user-visible change, bump the version in two places: the `<summary>` text
@@ -180,6 +180,12 @@ The final-score screen has a secondary **Share result** action beside the primar
 action. It generates a purpose-built 1080×1080 PNG with the score, five-round breakdown, game
 branding, and canonical URL. This is drawn directly with the browser Canvas API rather than
 capturing the DOM, which keeps the output predictable and avoids a screenshot dependency.
+
+An always-visible **Download PNG** action sits alongside Share result. This is necessary because
+desktop browsers such as Chrome on macOS can support Web Share image files while the operating
+system's resulting share sheet still provides no save-to-disk destination. The explicit action
+uses the same pre-rendered score-card blob and records `score_share` with an
+`explicit_download` method.
 
 The card is prepared when the final screen appears so the later button click can immediately open
 the device's native share sheet while its user activation is still valid. Browsers that support

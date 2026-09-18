@@ -221,14 +221,16 @@
     <div class="final-actions">
       <button id="btn-again">Play again</button>
       <button id="btn-share" class="button-secondary">Share result</button>
+      <button id="btn-download" class="button-secondary">Download PNG</button>
     </div>
     <p class="share-status" id="share-status" role="status" aria-live="polite"></p>
   </div>
 
   <details class="release-info">
-    <summary>Release notes &mdash; v1.3.0</summary>
+    <summary>Release notes &mdash; v1.3.1</summary>
     <ul class="release-list">
       <li>Added a shareable score card &mdash; send your result with your device's share menu, or download it as an image.</li>
+      <li>Added an always-available Download PNG button for desktop browsers whose share menu does not offer image saving.</li>
     </ul>
   </details>
 </div>
@@ -250,7 +252,7 @@
   const CO_SW = [37.0, -109.05];
   const CO_NE = [41.0, -102.05];
   const CO_BOUNDS = L.latLngBounds(CO_SW, CO_NE);
-  const GAME_VERSION = '1.3.0';
+  const GAME_VERSION = '1.3.1';
   const ROUNDS_PER_GAME = 5;
   const SHARE_URL = 'https://cocompass.leehilllabs.com/?utm_source=player_share&utm_medium=referral&utm_campaign=score_share';
   const GA_MEASUREMENT_ID = 'G-NMP21XF9R0';
@@ -635,6 +637,8 @@
     el('share-status').textContent = '';
     el('btn-share').disabled = false;
     el('btn-share').textContent = 'Share result';
+    el('btn-download').disabled = false;
+    el('btn-download').textContent = 'Download PNG';
     saveBest(score);
     const tbody = el('final-tbody');
     tbody.innerHTML = '';
@@ -836,6 +840,39 @@
     }
   }
 
+  async function downloadResult(){
+    const button = el('btn-download');
+    const status = el('share-status');
+    button.disabled = true;
+    button.textContent = 'Preparing\u2026';
+    status.textContent = '';
+
+    try{
+      const blob = await (shareImagePromise || buildShareImage());
+      downloadShareImage(blob);
+      status.textContent = 'Score card downloaded.';
+      trackEvent('score_share', {
+        game_version: GAME_VERSION,
+        total_score: score,
+        method: 'explicit_download',
+        outcome: 'completed'
+      });
+    }catch(error){
+      console.error('Could not download score card', error);
+      status.textContent = 'We couldn\u2019t prepare the score card. Please try again.';
+      shareImagePromise = null;
+      trackEvent('score_share', {
+        game_version: GAME_VERSION,
+        total_score: score,
+        method: 'explicit_download',
+        outcome: 'failed'
+      });
+    }finally{
+      button.disabled = false;
+      button.textContent = 'Download PNG';
+    }
+  }
+
   function playAgain(){
     trackEvent('play_again', {
       game_version: GAME_VERSION,
@@ -849,6 +886,7 @@
   el('btn-next').addEventListener('click', nextRound);
   el('btn-again').addEventListener('click', playAgain);
   el('btn-share').addEventListener('click', shareResult);
+  el('btn-download').addEventListener('click', downloadResult);
   el('analytics-toggle').addEventListener('click', toggleAnalytics);
 
   updateAnalyticsControl();
