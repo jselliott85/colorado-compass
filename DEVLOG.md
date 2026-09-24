@@ -319,8 +319,10 @@ against the new backgrounds.
 - `assets/og-image.png` re-rendered (headless Chrome, 1200×630) on the new dark palette. Its
   second tagline line now matches the site's ("View a satellite photo and figure out where it
   was taken.") since "Place your pin" no longer describes Easy mode.
-- Known gap: white button text on `--spruce` in dark mode is 3.2:1 (was 2.8:1 before), still
-  under 4.5:1 for 16px text.
+- Button text now uses a new `--on-spruce` token: white in light mode, `#1A1917` in dark mode.
+  White on the dark-mode teal was only 3.2:1 (2.6:1 on hover), under WCAG AA's 4.5:1 for 16px
+  text; the dark text gives 5.5:1 (6.8:1 on hover). The rule was also added to the LHL design
+  system as `text-on-brand`.
 
 ## Possible next steps (not yet done)
 

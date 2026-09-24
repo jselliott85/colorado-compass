@@ -46,6 +46,7 @@
     --rust:#B5502C;
     --spruce:#295C52;
     --spruce-hover:#214D45;
+    --on-spruce:#FFFFFF;
     --eyebrow:#476159;
     --gold:#C6912E;
     --border:#E5E0D9;
@@ -54,7 +55,7 @@
     :root:not([data-theme="light"]){
       --bg:#1A1917; --surface:#221F1A; --surface-2:#2A2620;
       --text:#F0EDE7; --text-muted:#A6A29B;
-      --rust:#D2703F; --spruce:#5C9C8C; --spruce-hover:#72AC9D; --eyebrow:#8C9A94; --gold:#E3B75E; --border:#302E2A;
+      --rust:#D2703F; --spruce:#5C9C8C; --spruce-hover:#72AC9D; --on-spruce:#1A1917; --eyebrow:#8C9A94; --gold:#E3B75E; --border:#302E2A;
     }
   }
   *{box-sizing:border-box;}
@@ -96,7 +97,7 @@
   button{
     font-family:'Inter', sans-serif; font-size:16px; font-weight:600;
     padding:14px 28px; border-radius:8px; border:none; cursor:pointer;
-    background:var(--spruce); color:#fff; transition:background-color 0.16s ease, transform 0.16s ease;
+    background:var(--spruce); color:var(--on-spruce); transition:background-color 0.16s ease, transform 0.16s ease;
   }
   button:disabled{background:var(--border); color:var(--text-muted); cursor:not-allowed;}
   button:not(:disabled):hover{background:var(--spruce-hover); transform:translateY(-1px);}
