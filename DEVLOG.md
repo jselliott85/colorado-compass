@@ -306,6 +306,22 @@ company logo.
   `prefers-color-scheme: dark` query the rest of the theme uses, rather than shipping a second
   logo asset.
 
+## Dark mode aligned to the LHL design system
+
+LHL now has a canonical, approved dark theme (Lee Hill Labs design system), so Compass's
+hand-derived dark palette above was replaced with its values: warm charcoal neutrals instead of
+the green-tinted near-black (`--bg #1A1917`, `--surface #221F1A`, `--surface-2 #2A2620`,
+`--border #302E2A`), `--text #F0EDE7` / `--text-muted #A6A29B` / `--eyebrow #8C9A94`, and a
+desaturated teal (`--spruce #5C9C8C`, hover `#72AC9D`). Light mode was already an exact match.
+`--rust` and `--gold` are Compass-only accents and stay as they were; both still clear 4.5:1
+against the new backgrounds.
+
+- `assets/og-image.png` re-rendered (headless Chrome, 1200×630) on the new dark palette. Its
+  second tagline line now matches the site's ("View a satellite photo and figure out where it
+  was taken.") since "Place your pin" no longer describes Easy mode.
+- Known gap: white button text on `--spruce` in dark mode is 3.2:1 (was 2.8:1 before), still
+  under 4.5:1 for 16px text.
+
 ## Possible next steps (not yet done)
 
 - Grow the location pool further if repeats start feeling too frequent.
