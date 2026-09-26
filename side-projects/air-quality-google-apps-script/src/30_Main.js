@@ -72,6 +72,7 @@ function aqRunCollection_(extendedBackfill) {
         return aqRebuildMaster_(affectedStart, aqUtcIso_(new Date()));
       });
     }
+    aqRefreshDysonStatus_();
     aqCheckDysonAlert_();
   } finally {
     SpreadsheetApp.flush();
@@ -173,6 +174,33 @@ function aqDysonRisk_(lastSuccessUtc, failures) {
   if (hours >= 72) return 'high';
   if (hours >= 36 || failures >= 2) return 'warning';
   return 'normal';
+}
+
+function aqRefreshDysonStatus_() {
+  const sheet = aqEnsureSheet_(AQ_SHEETS.STATUS, AQ_STATUS_HEADERS);
+  const existing = sheet.getLastRow() > 1
+    ? aqObjectRows_(AQ_STATUS_HEADERS, sheet.getRange(2, 1, sheet.getLastRow() - 1, AQ_STATUS_HEADERS.length).getValues())
+    : [];
+  const prior = existing.filter(function(row) { return row.source === 'dyson'; })[0] || {};
+  const lastSuccess = aqProperties_().getProperty('STATUS_DYSON_LAST_SUCCESS_UTC') || '';
+  const failures = Number(aqProperties_().getProperty('STATUS_DYSON_CONSECUTIVE_FAILURES') || 0);
+  const risk = aqDysonRisk_(lastSuccess, failures);
+  if (prior.dyson_retention_risk === risk && prior.status !== 'success') return;
+  if (prior.dyson_retention_risk === risk && risk === 'normal') return;
+  aqUpdateSourceStatus_({
+    source: 'dyson',
+    last_attempt_utc: prior.last_attempt_utc || '',
+    last_success_utc: lastSuccess,
+    status: risk === 'normal' ? (prior.status || 'success') : 'stale',
+    consecutive_failures: failures,
+    rows_fetched: prior.rows_fetched || 0,
+    rows_upserted: prior.rows_upserted || 0,
+    earliest_observation_utc: prior.earliest_observation_utc || '',
+    latest_observation_utc: prior.latest_observation_utc || '',
+    message: risk === 'normal' ? (prior.message || 'OK') : 'No recent successful signed Dyson intake.',
+    dyson_retention_risk: risk,
+    schema_version: AQ_SCHEMA_VERSION
+  });
 }
 
 function aqCheckDysonAlert_() {
