@@ -183,6 +183,7 @@
   .pin-guess{width:26px; height:36px;}
   .pin-true{width:26px; height:26px;}
   @media (max-width:640px){
+    #photo-map{height:auto; aspect-ratio:4/3;}
     .mode-options{grid-template-columns:1fr;}
     .mode-card{min-height:0;}
   }
@@ -280,20 +281,19 @@
   </div>
 
   <details class="release-info">
-    <summary>Release notes &mdash; v2.0.0</summary>
+    <summary>Release notes &mdash; v2.1.0</summary>
     <ul class="release-list">
-      <li>Two ways to play: choose Easy mode for multiple choice or Hard mode for the original map challenge.</li>
-      <li>Easy mode gives you five similar, same-category locations. Pick the correct answer to earn 1,000 points.</li>
-      <li>Hard mode keeps the classic distance scoring: place your pin anywhere in Colorado, with up to 1,000 points for a perfect guess.</li>
-      <li>Personal bests are now tracked separately for Easy and Hard mode. Existing scores carry forward as Hard-mode scores.</li>
-      <li>Final results and shareable score cards now show which mode you played.</li>
+      <li>Scenes now look right on phones: a taller frame shows the same area you'd see on a computer, with more context above and below.</li>
+      <li>Sharper satellite photos on high-resolution screens, including most phones and laptops.</li>
+      <li>Most scenes now use USGS aerial photography, taken in summer with little cloud cover, for a more consistent look across Colorado.</li>
+      <li>Re-framed Gross Reservoir, Boulder Reservoir, Grand Lake, Turquoise Lake, Keystone, and Eldora so the whole feature is in view.</li>
     </ul>
   </details>
 </div>
 
 <footer class="site-footer">
   <div class="footer-inner">
-    <p class="attribution">Satellite imagery &copy; Esri, Maxar, Earthstar Geographics, and USGS The National Map &middot; Reference map tiles &copy; Esri &middot; distances are straight-line, in miles</p>
+    <p class="attribution">Satellite imagery &copy; USGS The National Map and Esri, Maxar, Earthstar Geographics &middot; Reference map tiles &copy; Esri &middot; distances are straight-line, in miles</p>
     <p class="analytics-disclosure">We use Google Analytics to understand visits and gameplay, including rounds, scores, distances, and timing. We don't send names, contact information, or guess and target coordinates, and we don't use analytics for advertising or remarketing. <a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noreferrer">How Google uses this data</a>. Control analytics for this browser:<button class="analytics-toggle" id="analytics-toggle" type="button">Disable analytics</button></p>
     <a class="lhl-credit" href="https://leehilllabs.com" target="_blank" rel="noreferrer">
       <img class="lhl-logo" src="assets/lhl-logo.png" alt="Lee Hill Labs" width="158" height="140">
@@ -308,7 +308,7 @@
   const CO_SW = [37.0, -109.05];
   const CO_NE = [41.0, -102.05];
   const CO_BOUNDS = L.latLngBounds(CO_SW, CO_NE);
-  const GAME_VERSION = '2.0.0';
+  const GAME_VERSION = '2.1.0';
   const ROUNDS_PER_GAME = 5;
   const SHARE_URL = 'https://cocompass.leehilllabs.com/?utm_source=player_share&utm_medium=referral&utm_campaign=score_share';
   const GA_MEASUREMENT_ID = 'G-NMP21XF9R0';
@@ -377,10 +377,9 @@
       fact:"Near Aspen, these two 14,000-foot peaks reflected in Maroon Lake make up one of the most photographed spots in North America." },
     { name:"Garden of the Gods", lat:38.8783, lon:-104.8719, zoom:15,
       fact:"This free park on the west side of Colorado Springs is known for towering red sandstone fins pushed up some 300 million years ago." },
-    { name:"Great Sand Dunes National Park", lat:37.7916, lon:-105.5943, zoom:13,
+    { name:"Great Sand Dunes National Park", lat:37.7916, lon:-105.5943, zoom:13, imagery:'esri',
       fact:"Wind-piled sand against the Sangre de Cristo range in the San Luis Valley forms the tallest dunes in North America, some over 750 feet." },
     { name:"Royal Gorge", lat:38.4460, lon:-105.3172, zoom:14,
-      tiles:{ url:'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}', attribution:'Imagery &copy; USGS The National Map' },
       fact:"The Arkansas River carved this canyon a thousand feet deep near Ca\u00f1on City; a suspension bridge has spanned the rim since 1929." },
     { name:"Pikes Peak", lat:38.8409, lon:-105.0423, zoom:13,
       fact:"The view from this 14,115-foot summit above Colorado Springs inspired the song 'America the Beautiful' in 1893." },
@@ -389,7 +388,6 @@
     { name:"Red Rocks Amphitheatre", lat:39.6654, lon:-105.2057, zoom:15,
       fact:"Two 300-foot sandstone monoliths flank this open-air venue near Morrison, in use as a concert stage since the 1930s." },
     { name:"Bear Lake, Rocky Mountain NP", lat:40.3123, lon:-105.6486, zoom:14,
-      tiles:{ url:'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}', attribution:'Imagery &copy; USGS The National Map' },
       fact:"This subalpine lake near Estes Park, ringed by spruce and jagged peaks, sits at about 9,450 feet." },
     { name:"Colorado National Monument", lat:39.0561, lon:-108.6929, zoom:13,
       fact:"Sheer red canyons and freestanding rock towers rise above Grand Junction along Rim Rock Drive." },
@@ -398,7 +396,6 @@
     { name:"Trail Ridge Road: Alpine Visitor Center", lat:40.4409, lon:-105.7546, zoom:15,
       fact:"The highest continuous paved through-road in the United States crests above 12,000 feet here, with more than 11 miles of it running above treeline." },
     { name:"St. Elmo", lat:38.7037, lon:-106.3452, zoom:15,
-      tiles:{ url:'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}', attribution:'Imagery &copy; USGS The National Map' },
       fact:"One of Colorado's best-preserved ghost towns, this 1880s gold-mining settlement at the base of the Sawatch Range still has dozens of original wooden buildings standing." },
     { name:"Cheyenne Mountain Zoo & The Broadmoor", lat:38.7806, lon:-104.8578, zoom:13,
       fact:"Spencer Penrose opened the Broadmoor hotel in 1918, then built the Cheyenne Mountain Zoo on the slope above it in 1926; at roughly 6,800 feet, it is one of the highest-elevation zoos in the country." },
@@ -412,17 +409,17 @@
     { category:'lakes_reservoirs', locations:[
     { name:"Dillon Reservoir", lat:39.6208, lon:-106.0453, zoom:13,
       fact:"This reservoir near Frisco and Silverthorne holds Denver's drinking water, piped more than 23 miles through the mountains via the Roberts Tunnel." },
-    { name:"Gross Reservoir", lat:39.9375, lon:-105.3350, zoom:13,
+    { name:"Gross Reservoir", lat:39.9470, lon:-105.3700, zoom:13.6,
       fact:"Tucked in the foothills above Boulder, this reservoir is in the middle of a major dam-raising project to nearly double its storage capacity." },
     { name:"Barker Reservoir", lat:39.9654, lon:-105.4909, zoom:14,
       fact:"This small reservoir above Nederland was formed by one of the first hydroelectric dams built in Colorado, back in 1908." },
-    { name:"Boulder Reservoir", lat:40.0730, lon:-105.2280, zoom:14,
+    { name:"Boulder Reservoir", lat:40.0730, lon:-105.2280, zoom:13.5, phoneZoom:12.7,
       fact:"A popular summer spot for sailing and swimming just northeast of the city, fed by the Boulder Feeder Canal." },
-    { name:"Grand Lake", lat:40.2540, lon:-105.8230, zoom:13,
+    { name:"Grand Lake", lat:40.2400, lon:-105.8180, zoom:13,
       fact:"Colorado's largest natural lake sits at the western entrance to Rocky Mountain National Park and marks the headwaters of the Colorado River." },
     { name:"Blue Mesa Reservoir", lat:38.4750, lon:-107.1000, zoom:12,
       fact:"Colorado's largest body of water by volume, formed by a dam on the Gunnison River, and home to the state's biggest population of kokanee salmon." },
-    { name:"Turquoise Lake", lat:39.2830, lon:-106.4230, zoom:13,
+    { name:"Turquoise Lake", lat:39.2650, lon:-106.3935, zoom:13.1,
       fact:"A reservoir near Leadville ringed by 14,000-foot peaks, sitting at over 9,800 feet, one of the highest lakes of its size in the country." },
     { name:"Lake San Cristobal", lat:37.9803, lon:-107.2842, zoom:13,
       fact:"Colorado's second-largest natural lake, formed about 700 years ago when the Slumgullion Earthflow landslide dammed the Lake Fork of the Gunnison River." }
@@ -440,12 +437,11 @@
       fact:"Colorado's oldest continuously operating ski resort, reached from Denver by a scenic train route through the Moffat Tunnel." },
     { name:"Copper Mountain", lat:39.5022, lon:-106.1497, zoom:13,
       fact:"This resort's terrain naturally splits by difficulty from west to east, making it easy to tell beginner, intermediate, and expert runs apart from above." },
-    { name:"Keystone", lat:39.5947, lon:-105.9490, zoom:14,
+    { name:"Keystone", lat:39.5947, lon:-105.9490, zoom:13.3, phoneZoom:12.7,
       fact:"One of the few Colorado resorts with regular night skiing, spread across three interconnected mountains near Dillon Reservoir." },
-    { name:"Eldora", lat:39.9444, lon:-105.5998, zoom:14,
+    { name:"Eldora", lat:39.9405, lon:-105.5943, zoom:13.8,
       fact:"Colorado's closest major ski area to Denver and Boulder, about 21 miles from Boulder, and home to a large Nordic touring center alongside its downhill terrain." },
     { name:"Wolf Creek", lat:37.4719, lon:-106.7930, zoom:13,
-      tiles:{ url:'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}', attribution:'Imagery &copy; USGS The National Map' },
       fact:"Perched on a moisture-catching pass on the Continental Divide, this resort claims more average annual snowfall than any other in Colorado, with no real estate development at its base." },
     { name:"Arapahoe Basin", lat:39.6425, lon:-105.8719, zoom:13,
       fact:"One of the highest ski areas in North America, with a base above 10,700 feet, it's traditionally among the first Colorado resorts to open and the last to close each year." },
@@ -464,7 +460,6 @@
     ]},
     { category:'mountains_wilderness', locations:[
     { name:"Longs Peak", lat:40.2549, lon:-105.6151, zoom:12,
-      tiles:{ url:'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}', attribution:'Imagery &copy; USGS The National Map' },
       fact:"The northernmost 14,000-foot peak in the Rockies and the tallest in Rocky Mountain National Park, with a distinctive flat summit." },
     { name:"Mount Elbert", lat:39.1178, lon:-106.4453, zoom:12,
       fact:"At 14,440 feet, this is the highest point in Colorado and the second-highest peak in the contiguous United States." },
@@ -499,13 +494,12 @@
     { name:"Ouray", lat:38.0233, lon:-107.6714, zoom:14,
       fact:"Known as the 'Switzerland of America' for the steep peaks surrounding its tiny downtown, and home to a famous hot springs pool." },
     { name:"Leadville", lat:39.2508, lon:-106.2925, zoom:13.1,
-      tiles:{ url:'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}', attribution:'Imagery &copy; USGS The National Map' },
       fact:"At 10,152 feet, this is the highest incorporated city in the United States, and once one of the richest silver-mining towns in the world." },
     { name:"Salida", lat:38.5347, lon:-105.9997, zoom:14,
       fact:"Sitting along the Arkansas River, this town has the largest historic downtown district in Colorado." },
     { name:"Buena Vista", lat:38.8422, lon:-106.1311, zoom:14,
       fact:"A gateway to the Collegiate Peaks and a major put-in point for rafting the Arkansas River." },
-    { name:"Georgetown", lat:39.7047, lon:-105.6969, zoom:14,
+    { name:"Georgetown", lat:39.7047, lon:-105.6969, zoom:14, imagery:'esri',
       fact:"A well-preserved 1870s silver-mining town, connected to nearby Silver Plume by a narrow-gauge loop railroad with a dramatic high bridge." },
     { name:"Black Hawk", lat:39.8003, lon:-105.4919, zoom:15,
       fact:"A former gold-mining boomtown turned casino town after Colorado legalized limited-stakes gambling here in 1991, now home to some of the state's largest casinos." },
@@ -608,22 +602,71 @@
     });
   }
 
+  // USGS is the default photo source; a location opts into Esri with imagery:'esri'. Esri is
+  // pinned to a dated World Imagery Wayback release so approved scenes can't change underneath us.
+  const IMAGERY = {
+    usgs: { url:'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}',
+            attribution:'Imagery &copy; USGS The National Map', maxNativeZoom:16 },
+    esri: { url:'https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/default028mm/MapServer/tile/26334/{z}/{y}/{x}',
+            attribution:'Imagery &copy; Esri (World Imagery, 2026-08-05)', maxNativeZoom:19 }
+  };
+  const IMAGERY_FALLBACK_AFTER_ERRORS = 3;
+
+  // Each location's zoom was approved for an 860px-wide desktop frame. Narrow screens get a taller
+  // 4:3 frame (see CSS) that shows the same ground width, unless the location sets its own
+  // phoneZoom (approved for a 350px-wide frame).
+  const DESKTOP_FRAME_WIDTH = 860, PHONE_FRAME_WIDTH = 350;
+  const phoneFrame = window.matchMedia('(max-width:640px)');
+
+  function photoZoom(loc){
+    const w = el('photo-map').clientWidth;
+    if(!w) return loc.zoom;
+    if(phoneFrame.matches){
+      const base = loc.phoneZoom ?? loc.zoom + Math.log2(PHONE_FRAME_WIDTH / DESKTOP_FRAME_WIDTH);
+      return base + Math.log2(w / PHONE_FRAME_WIDTH);
+    }
+    return loc.zoom + Math.log2(w / DESKTOP_FRAME_WIDTH);
+  }
+
+  function framePhotoMap(loc){
+    if(!photoMap) return;
+    photoMap.invalidateSize();
+    photoMap.setView([loc.lat, loc.lon], photoZoom(loc), {animate:false});
+  }
+
+  function addImagery(map, loc, source){
+    const src = IMAGERY[source];
+    // detectRetina requests one zoom level deeper on high-DPI screens, so cap the native zoom
+    // one lower there to avoid asking for tiles the service doesn't have.
+    const layer = L.tileLayer(src.url, {
+      attribution: src.attribution,
+      maxZoom: 18,
+      maxNativeZoom: src.maxNativeZoom - (L.Browser.retina ? 1 : 0),
+      detectRetina: true
+    });
+    if(source === 'usgs'){
+      let errors = 0;
+      layer.on('tileerror', ()=>{
+        if(++errors !== IMAGERY_FALLBACK_AFTER_ERRORS || map !== photoMap) return;
+        map.removeLayer(layer);
+        addImagery(map, loc, 'esri');
+        trackEvent('imagery_fallback', { game_version: GAME_VERSION, location: loc.name });
+      });
+    }
+    layer.addTo(map);
+  }
+
   function buildPhotoMap(loc){
     if(photoMap){ photoMap.remove(); photoMap = null; }
     photoMap = L.map('photo-map', {
       center: [loc.lat, loc.lon],
-      zoom: loc.zoom,
+      zoom: photoZoom(loc),
       zoomSnap: 0,
       dragging: false, zoomControl: false, scrollWheelZoom: false,
       doubleClickZoom: false, boxZoom: false, keyboard: false, touchZoom: false,
       attributionControl: true
     });
-    // A few locations override the default Esri layer, e.g. where its imagery mosaic has a bad seam.
-    const tiles = loc.tiles || { url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attribution:'Imagery &copy; Esri' };
-    L.tileLayer(tiles.url, {
-      attribution: tiles.attribution,
-      maxZoom: 18
-    }).addTo(photoMap);
+    addImagery(photoMap, loc, loc.imagery || 'usgs');
   }
 
   function startGame(mode){
@@ -711,9 +754,19 @@
     buildPhotoMap(loc);
     setTimeout(()=>{
       if(gameMode === 'hard') guessMap.invalidateSize();
-      photoMap.invalidateSize();
+      framePhotoMap(loc);
     }, 30);
   }
+
+  // Re-fit the scene when the frame width changes (window resize, phone rotation).
+  let reframeTimer = null;
+  window.addEventListener('resize', ()=>{
+    clearTimeout(reframeTimer);
+    reframeTimer = setTimeout(()=>{
+      const loc = LOCATIONS[order[round]];
+      if(photoMap && loc) framePhotoMap(loc);
+    }, 150);
+  });
 
   function submitGuess(){
     if(!guessLatLon || !el('result-block').classList.contains('hidden')) return;

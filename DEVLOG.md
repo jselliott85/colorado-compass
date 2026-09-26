@@ -47,9 +47,10 @@ which runs in the user's own browser with no such restriction and can freely loa
 
 ## Map providers
 
-- **Photo panel (the "mystery" image):** Esri World Imagery (satellite), loaded via Leaflet.
-  Free, no API key, and permissive enough to embed directly. Locked/non-interactive per round
-  (no drag, zoom, or scroll) so it functions like a fixed photo rather than an explorable map.
+- **Photo panel (the "mystery" image):** originally Esri World Imagery for every scene; since
+  v2.1 it is USGS `USGSImageryOnly` by default, with Esri as a per-location option. See
+  "Imagery sources and phone framing" below. Locked/non-interactive per round (no drag, zoom,
+  or scroll) so it functions like a fixed photo rather than an explorable map.
 - **Reference/guess map:** originally tried OpenStreetMap's standard tile server
   (`tile.openstreetmap.org`). It actively blocked requests (403 — their usage policy explicitly
   disallows this kind of embedded-app/local-file use on their volunteer-run infrastructure).
@@ -323,6 +324,42 @@ against the new backgrounds.
   White on the dark-mode teal was only 3.2:1 (2.6:1 on hover), under WCAG AA's 4.5:1 for 16px
   text; the dark text gives 5.5:1 (6.8:1 on hover). The rule was also added to the LHL design
   system as `text-on-brand`.
+
+## Imagery sources and phone framing (v2.1)
+
+**Why:** the photo frame was a fixed 280px tall at full page width, so a phone (~350px wide) saw
+a near-square crop of the wide 860x280 desktop view: same zoom, roughly 40% of the ground width.
+Wide or off-center features got cut off, and scenes looked different from what was approved on
+desktop. Separately, live Esri imagery can change under us (new captures, snow, cloud, seams),
+and every Esri problem found so far had been fixed by switching that scene to USGS.
+
+- **Source audit:** all 68 scenes were rendered from both sources at desktop and proposed phone
+  framing and reviewed side by side. Result: 66 USGS, 2 Esri (Georgetown, Great Sand Dunes).
+  USGS imagery is mostly NAIP (summer, low cloud cover), so the look is consistent statewide.
+- **Data shape:** `IMAGERY`, next to `buildPhotoMap()`, defines the two sources. USGS is
+  the default; a location opts into Esri with `imagery:'esri'`. The old per-location `tiles`
+  overrides are gone.
+- **Esri is pinned** to World Imagery Wayback release `26334` (2026-08-05), whose tiles were
+  verified byte-identical to live World Imagery for both Esri scenes at the time of the audit.
+  To move to newer imagery, pick a release from
+  `https://s3-us-west-2.amazonaws.com/config.maptiles.arcgis.com/waybackconfig.json`, review the
+  Esri scenes, and change the release number in the URL.
+- **USGS can't be pinned** and is refreshed when new NAIP flights arrive (roughly every 2-3 years
+  for Colorado). Re-audit after a refresh.
+- **Fallback:** after 3 USGS tile errors on a scene, the photo swaps to the pinned Esri layer and
+  sends an `imagery_fallback` analytics event with the location name.
+- **High-DPI:** `detectRetina` loads one zoom level deeper on retina screens. USGS only serves
+  tiles through zoom 16 (17+ is 404), so `maxNativeZoom` is lowered by one on retina screens to
+  keep requests inside what the service has.
+- **Phone framing:** at 640px and below the frame is 4:3 instead of 280px tall. Each location's
+  `zoom` is defined for an 860px-wide desktop frame; `photoZoom()` adds `log2(frameWidth/860)`,
+  so any frame width shows the same ground width as approved on desktop, with extra context above
+  and below on phones. A location may set `phoneZoom` (defined for a 350px-wide frame) when the
+  phone view should differ from that; Boulder Reservoir and Keystone do, because their desktop
+  views were zoomed out after the phone view was approved. The scene re-fits on resize/rotation.
+- **Re-framed in the same pass:** Gross Reservoir, Grand Lake, Turquoise Lake, and Eldora were
+  re-centered on the feature (which also moves their scoring point onto it); Boulder Reservoir
+  and Keystone desktop views were zoomed out.
 
 ## Possible next steps (not yet done)
 
