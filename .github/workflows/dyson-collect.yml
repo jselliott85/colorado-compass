@@ -1,0 +1,27 @@
+name: Dyson history collection
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dyson-history-collection
+  cancel-in-progress: false
+
+jobs:
+  collect-dyson-history:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Read Dyson and deliver signed observations
+        env:
+          DYSON_TOKEN: ${{ secrets.DYSON_TOKEN }}
+          DYSON_DEVICE_SERIAL: ${{ secrets.DYSON_DEVICE_SERIAL }}
+          DYSON_INGEST_URL: ${{ secrets.DYSON_INGEST_URL }}
+          DYSON_INGEST_SECRET: ${{ secrets.DYSON_INGEST_SECRET }}
+        run: python3 -B side-projects/dyson-air-quality/relay.py

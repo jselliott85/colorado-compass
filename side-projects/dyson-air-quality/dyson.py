@@ -434,7 +434,9 @@ def converted_temperature(raw_value: Any) -> tuple[Any, Any]:
     return round(celsius, 2), round(celsius * 9 / 5 + 32, 2)
 
 
-def export_daily(payload: Any, path: Path, timezone_name: str = DEFAULT_TIMEZONE) -> dict[str, Any]:
+def normalize_daily(
+    payload: Any, timezone_name: str = DEFAULT_TIMEZONE
+) -> tuple[list[dict[str, Any]], list[str], dict[str, Any]]:
     if not isinstance(payload, dict):
         raise DysonError("The daily-history response was not an object.")
     raw_series_names = (
@@ -516,8 +518,7 @@ def export_daily(payload: Any, path: Path, timezone_name: str = DEFAULT_TIMEZONE
         "fan_speed",
         "usage_seconds",
     ]
-    write_csv(path, rows, output_fields)
-    return {
+    summary = {
         "start_time": start_raw,
         "resolution_minutes": resolution,
         "slots": slot_count,
@@ -539,6 +540,13 @@ def export_daily(payload: Any, path: Path, timezone_name: str = DEFAULT_TIMEZONE
         "series_fields": sorted(series),
         "fields": sorted(payload.keys()),
     }
+    return rows, output_fields, summary
+
+
+def export_daily(payload: Any, path: Path, timezone_name: str = DEFAULT_TIMEZONE) -> dict[str, Any]:
+    rows, fields, summary = normalize_daily(payload, timezone_name)
+    write_csv(path, rows, fields)
+    return summary
 
 
 def summarize_multiday(payload: Any, rows: list[dict[str, Any]], fields: list[str]) -> dict[str, Any]:
