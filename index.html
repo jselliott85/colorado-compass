@@ -281,20 +281,17 @@
   </div>
 
   <details class="release-info">
-    <summary>Release notes &mdash; v2.1.0</summary>
+    <summary>Release notes &mdash; v2.2.0</summary>
     <ul class="release-list">
-      <li>Scenes now look right on phones: a taller frame shows the same area you'd see on a computer, with more context above and below.</li>
-      <li>Sharper satellite photos on high-resolution screens, including most phones and laptops.</li>
-      <li>Most scenes now use USGS aerial photography, taken in summer with little cloud cover, for a more consistent look across Colorado.</li>
-      <li>Re-framed Gross Reservoir, Boulder Reservoir, Grand Lake, Turquoise Lake, Keystone, and Eldora so the whole feature is in view.</li>
-      <li>Hard mode: the scoring point for Gross Reservoir, Grand Lake, Turquoise Lake, and Eldora now sits on the lake or resort itself, so a pin on the feature scores higher than before.</li>
+      <li>Hard mode has a new map: USGS topographic, with city and town names and numbered highways visible from the first statewide view.</li>
+      <li>From v2.1: scenes fit phone screens, photos are sharper on high-resolution screens, most scenes now use USGS aerial photography, and the Hard mode scoring points for Gross Reservoir, Grand Lake, Turquoise Lake, and Eldora now sit on the feature itself.</li>
     </ul>
   </details>
 </div>
 
 <footer class="site-footer">
   <div class="footer-inner">
-    <p class="attribution">Satellite imagery &copy; USGS The National Map and Esri, Maxar, Earthstar Geographics &middot; Reference map tiles &copy; Esri &middot; distances are straight-line, in miles</p>
+    <p class="attribution">Satellite imagery &copy; USGS The National Map and Esri, Maxar, Earthstar Geographics &middot; Hard mode map &copy; USGS The National Map and Esri &middot; distances are straight-line, in miles</p>
     <p class="analytics-disclosure">We use Google Analytics to understand visits and gameplay, including rounds, scores, distances, and timing. We don't send names, contact information, or guess and target coordinates, and we don't use analytics for advertising or remarketing. <a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noreferrer">How Google uses this data</a>. Control analytics for this browser:<button class="analytics-toggle" id="analytics-toggle" type="button">Disable analytics</button></p>
     <a class="lhl-credit" href="https://leehilllabs.com" target="_blank" rel="noreferrer">
       <img class="lhl-logo" src="assets/lhl-logo.png" alt="Lee Hill Labs" width="158" height="140">
@@ -309,7 +306,7 @@
   const CO_SW = [37.0, -109.05];
   const CO_NE = [41.0, -102.05];
   const CO_BOUNDS = L.latLngBounds(CO_SW, CO_NE);
-  const GAME_VERSION = '2.1.0';
+  const GAME_VERSION = '2.2.0';
   const ROUNDS_PER_GAME = 5;
   const SHARE_URL = 'https://cocompass.leehilllabs.com/?utm_source=player_share&utm_medium=referral&utm_campaign=score_share';
   const GA_MEASUREMENT_ID = 'G-NMP21XF9R0';
@@ -577,6 +574,30 @@
     return arr;
   }
 
+  // Hard-mode reference map: USGS Topo labels cities and numbered highways even at the opening
+  // statewide zoom. Esri World Street Map stands in if USGS is failing.
+  const GUESS_BASEMAPS = {
+    usgs: { url:'https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}',
+            attribution:'Map &copy; USGS The National Map' },
+    esri: { url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+            attribution:'Map &copy; Esri' }
+  };
+
+  function addGuessBasemap(source){
+    const src = GUESS_BASEMAPS[source];
+    const layer = L.tileLayer(src.url, { attribution: src.attribution, maxZoom: 13 });
+    if(source === 'usgs'){
+      let errors = 0;
+      layer.on('tileerror', ()=>{
+        if(++errors !== IMAGERY_FALLBACK_AFTER_ERRORS) return;
+        guessMap.removeLayer(layer);
+        addGuessBasemap('esri');
+        trackEvent('guess_map_fallback', { game_version: GAME_VERSION });
+      });
+    }
+    layer.addTo(guessMap).bringToBack();
+  }
+
   function initGuessMap(){
     if(guessMap) return;
     guessMap = L.map('guess-map', {
@@ -586,10 +607,7 @@
       maxZoom: 13
     });
     guessMap.fitBounds(CO_BOUNDS, {padding:[6,6]});
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
-      attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
-      maxZoom: 13
-    }).addTo(guessMap);
+    addGuessBasemap('usgs');
     L.rectangle([CO_SW, CO_NE], {color:'#B5502C', weight:2, fill:false, dashArray:'4,4'}).addTo(guessMap);
     guessLayer = L.layerGroup().addTo(guessMap);
 

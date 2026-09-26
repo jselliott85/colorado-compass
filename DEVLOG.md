@@ -57,6 +57,15 @@ which runs in the user's own browser with no such restriction and can freely loa
   Switched to **Esri World Topo Map** instead — same provider as the imagery layer (so no
   separate blocking risk), and its shaded relief + roads + labels is actually a closer match to
   the "reference map" look than plain OSM was.
+- **Hard-mode map since v2.2: USGS Topo** (`USGSTopo`), with Esri World Street Map as an
+  automatic fallback after 3 tile errors (`guess_map_fallback` analytics event). Chosen from a
+  side-by-side of 8 USGS/Esri basemaps at the zooms players use (statewide, Front Range, mountains,
+  phone). The deciding factor was the opening statewide view (zoom 6): USGS Topo is the only one
+  that labels multiple Colorado cities and numbered highways there; the Esri maps, including the
+  old World Topo Map, label only Denver until you zoom in. Tradeoff: busier in the mountains
+  (national-forest boundaries). No `detectRetina` on this map, because it would halve label size.
+  Satellite + labels (`USGSImageryTopo`) was ruled out because players could match the scene
+  photo against it.
 
 ## Location pool
 
