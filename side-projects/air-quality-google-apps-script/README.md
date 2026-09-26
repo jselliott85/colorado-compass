@@ -81,6 +81,8 @@ The GitHub-hosted read-only smoke test must pass first. Then:
 4. Manually run **Actions → Dyson history collection → Run workflow** on `main`. Confirm the run passes and `Source_Status` shows a recent Dyson success. Check `Dyson_15min` and `Master_15min` for matching UTC timestamps with individual VOC, PM2.5, PM10, and NO2 values.
 5. Only after the manual run succeeds, enable the six-hour `:17` GitHub schedule and remove the old Dyson token and serial from Apps Script Script Properties.
 
+The six-hour schedule is enabled after the successful manual intake test. This repository is public: GitHub automatically disables scheduled workflows after 60 days without repository activity, even if the workflow itself has run. That makes this schedule an interim collector, not a reliable years-long unattended scheduler. A private side repository or an external authenticated dispatcher is required before treating the Dyson relay as permanently unattended. The Apps Script health check and `ALERT_EMAIL` can warn about staleness, but an alert is not a substitute for durable scheduling.
+
 The relay sends normalized 15-minute readings signed with HMAC-SHA256. The intake verifies the signature, a 15-minute send-time window, 15-minute timestamp alignment, an eight-day observation window, and all expected numeric fields. Repeated requests update rows by UTC timestamp. Invalid requests cannot write to Sheets. Apps Script web apps return a JSON acknowledgement rather than a custom HTTP status, so the GitHub job checks `ok: true` and the acknowledged row count.
 
 ## Health and recovery

@@ -101,6 +101,7 @@ function aqExpandCdphe_(records, requestedDates, timeZone) {
   const rows = [];
   Object.keys(records).sort().forEach(function(hourEndingMst) {
     const source = records[hourEndingMst];
+    if (!aqRegionalHasObservation_(source)) return;
     const hourEnding = new Date(hourEndingMst);
     const candidates = [
       ['PM2.5', source.pm25_aqi], ['PM10', source.pm10_aqi], ['ozone', source.ozone_aqi]

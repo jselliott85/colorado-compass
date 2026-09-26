@@ -71,12 +71,14 @@ function aqUpsertRows_(sheetName, headers, rows) {
     if (blockStart === null) blockStart = update.row;
     const expectedRow = blockStart + block.length;
     if (update.row !== expectedRow) {
+      aqFormatIdentifierColumns_(sheet, sheetName, blockStart, block.length);
       sheet.getRange(blockStart, 1, block.length, headers.length).setValues(block);
       block = [];
       blockStart = update.row;
     }
     block.push(update.values);
     if (index === updates.length - 1 && block.length) {
+      aqFormatIdentifierColumns_(sheet, sheetName, blockStart, block.length);
       sheet.getRange(blockStart, 1, block.length, headers.length).setValues(block);
     }
   });
@@ -86,6 +88,7 @@ function aqUpsertRows_(sheetName, headers, rows) {
     if (sheet.getMaxRows() < appendStart + appends.length - 1) {
       sheet.insertRowsAfter(sheet.getMaxRows(), appendStart + appends.length - 1 - sheet.getMaxRows());
     }
+    aqFormatIdentifierColumns_(sheet, sheetName, appendStart, appends.length);
     sheet.getRange(appendStart, 1, appends.length, headers.length).setValues(appends);
     const lastExistingKey = existingKeys.filter(Boolean).slice(-1)[0] || '';
     const appendedKeys = ordered.filter(function(row) { return !rowByKey[row.timestamp_utc]; });
@@ -100,6 +103,14 @@ function aqUpsertRows_(sheetName, headers, rows) {
     earliest: ordered[0].timestamp_utc,
     latest: ordered[ordered.length - 1].timestamp_utc
   };
+}
+
+function aqFormatIdentifierColumns_(sheet, sheetName, startRow, rowCount) {
+  const columns = sheetName === AQ_SHEETS.MASTER ? [5, 49, 51]
+    : sheetName === AQ_SHEETS.REGIONAL ? [17, 19] : [];
+  columns.forEach(function(column) {
+    sheet.getRange(startRow, column, rowCount, 1).setNumberFormat('@');
+  });
 }
 
 function aqRefreshFilter_(sheet, columnCount) {

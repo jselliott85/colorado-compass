@@ -18,7 +18,8 @@ function aqRebuildMaster_(startUtc, endUtc) {
     const dayName = Utilities.formatDate(timestamp, config.timeZone, 'EEEE');
     const d = dyson[key] || null;
     const t = tempest[key] || null;
-    const r = regional[key] || null;
+    const sourceRegional = regional[key] || null;
+    const r = aqRegionalHasObservation_(sourceRegional) ? sourceRegional : null;
     const missing = [];
     if (!d) missing.push('dyson');
     if (!t) missing.push('tempest');
@@ -88,4 +89,13 @@ function aqIndexRows_(rows) {
   const index = {};
   rows.forEach(function(row) { index[String(row.timestamp_utc)] = row; });
   return index;
+}
+
+function aqRegionalHasObservation_(row) {
+  if (!row) return false;
+  return [
+    'pm25_1h_ug_m3', 'pm25_24h_ug_m3', 'pm25_aqi',
+    'pm10_1h_ug_m3', 'pm10_24h_ug_m3', 'pm10_aqi',
+    'ozone_1h_ppb', 'ozone_8h_ppb', 'ozone_aqi', 'combined_aqi'
+  ].some(function(field) { return aqNumber_(row[field]) !== null; });
 }

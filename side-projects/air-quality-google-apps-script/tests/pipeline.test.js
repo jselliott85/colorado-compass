@@ -175,6 +175,14 @@ test('CDPHE expansion labels regional sources and repeats hourly values into fou
   assert.equal(rows[0].pm_station_aqs_id, '080131001');
 });
 
+test('CDPHE empty hourly placeholders are missing, while zero is an observation', () => {
+  const runtime = loadRuntime(['aqExpandCdphe_', 'aqRegionalHasObservation_']);
+  const empty = { pm25_1h_ug_m3: null, pm25_aqi: '', pm10_aqi: null, ozone_aqi: '' };
+  assert.equal(runtime.aqRegionalHasObservation_(empty), false);
+  assert.equal(runtime.aqRegionalHasObservation_({ pm25_1h_ug_m3: 0 }), true);
+  assert.equal(runtime.aqExpandCdphe_({ '2026-09-24T10:00:00-07:00': empty }, ['2026-09-24'], 'America/Denver').length, 0);
+});
+
 test('safe errors redact bearer and query-token values', () => {
   const runtime = loadRuntime(['aqSafeMessage_']);
   const message = runtime.aqSafeMessage_(new Error('Bearer abc.def token https://x.test/?token=secret123&x=1'));
