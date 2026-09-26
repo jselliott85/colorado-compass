@@ -91,6 +91,10 @@ The trigger runs every six hours. Each source is isolated: one source failing do
 
 Dyson health is updated by successful signed intake. A failed GitHub run leaves the last-success timestamp stale; the scheduled Apps Script check escalates after 36 hours. At 120 hours, `Source_Status` reports a critical under-48-hours-before-history-loss state. When `ALERT_EMAIL` is configured, alerts are rate-limited to one per 24 hours.
 
+## Next step — deferred
+
+Move the Dyson scheduled workflow into a small **private companion GitHub repository**, while keeping this Colorado Compass repository public for its GitHub Pages site. Copy only the read-only relay code and required workflow, configure the four Dyson GitHub Actions secrets in the private repository, manually verify a signed intake into the existing private Sheet, and then disable the public repository's Dyson schedule. Do not change the Colorado Compass repository's visibility. The current public-repository six-hour schedule remains active until the private replacement is verified; GitHub may disable it after 60 days without repository activity. This step has been intentionally deferred by the owner.
+
 ## Long-term storage
 
 Google currently documents a 20-million-cell Sheets limit. The working workbook warns conceptually at 15 million allocated cells so completed years can be copied to same-schema private archive workbooks and listed in `Archive_Index` before the limit is approached. Raw one-minute Tempest payloads live as compressed Drive files instead of Sheet rows, which greatly extends the useful lifetime of the analytical workbook.
