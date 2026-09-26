@@ -1,0 +1,14 @@
+# Local credentials (never commit)
+.env
+**/.env
+
+# Personal sensor exports and raw API responses stay local.
+side-projects/tempest-air-quality/data/
+side-projects/tempest-air-quality/raw/
+side-projects/dyson-air-quality/data/
+side-projects/dyson-air-quality/raw/
+side-projects/air-quality-analysis/tmp/
+
+# Python cache files
+__pycache__/
+*.py[cod]

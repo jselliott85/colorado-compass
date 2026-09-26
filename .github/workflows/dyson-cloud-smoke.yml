@@ -1,0 +1,21 @@
+name: Dyson cloud smoke test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  read-dyson-history:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Read Dyson daily history
+        env:
+          DYSON_TOKEN: ${{ secrets.DYSON_TOKEN }}
+          DYSON_DEVICE_SERIAL: ${{ secrets.DYSON_DEVICE_SERIAL }}
+        run: python3 -B side-projects/dyson-air-quality/smoke_test.py
