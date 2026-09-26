@@ -209,7 +209,7 @@
       </button>
       <button class="mode-card" type="button" data-mode="hard">
         <span class="mode-name">Hard mode</span>
-        <span class="mode-description">Place a pin anywhere on the Colorado map. The closer you land, the more points you score.</span>
+        <span class="mode-description">Place a pin anywhere on the Colorado map. The closer you land, the more points you score, and within 3 miles is a bullseye worth all 1,000.</span>
         <span class="mode-cta">Play Hard &rarr;</span>
         <span class="mode-best" id="best-hard"></span>
       </button>
@@ -281,9 +281,11 @@
   </div>
 
   <details class="release-info">
-    <summary>Release notes &mdash; v2.2.0</summary>
+    <summary>Release notes &mdash; v2.3.0</summary>
     <ul class="release-list">
-      <li>Hard mode has a new map: USGS topographic, with city and town names and numbered highways visible from the first statewide view.</li>
+      <li>Hard mode bullseye: land within 3 miles of the spot and you earn the full 1,000 points.</li>
+      <li>Hard mode points now start dropping at 3 miles instead of right away, so every guess scores a little more than before.</li>
+      <li>From v2.2: Hard mode uses a USGS topographic map with city and town names and numbered highways visible from the first statewide view.</li>
       <li>From v2.1: scenes fit phone screens, photos are sharper on high-resolution screens, most scenes now use USGS aerial photography, and the Hard mode scoring points for Gross Reservoir, Grand Lake, Turquoise Lake, and Eldora now sit on the feature itself.</li>
     </ul>
   </details>
@@ -306,7 +308,7 @@
   const CO_SW = [37.0, -109.05];
   const CO_NE = [41.0, -102.05];
   const CO_BOUNDS = L.latLngBounds(CO_SW, CO_NE);
-  const GAME_VERSION = '2.2.0';
+  const GAME_VERSION = '2.3.0';
   const ROUNDS_PER_GAME = 5;
   const SHARE_URL = 'https://cocompass.leehilllabs.com/?utm_source=player_share&utm_medium=referral&utm_campaign=score_share';
   const GA_MEASUREMENT_ID = 'G-NMP21XF9R0';
@@ -365,8 +367,15 @@
     const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   }
+  // Hard mode: anything within BULLSEYE_MILES (as displayed, to 0.1 mi) earns the full 1,000, and
+  // the exponential falloff starts at the edge of the bullseye so there's no cliff past it.
+  const BULLSEYE_MILES = 3;
+  function isBullseye(distanceMiles){
+    return Number(distanceMiles.toFixed(1)) <= BULLSEYE_MILES;
+  }
   function scoreFor(distanceMiles){
-    return Math.max(0, Math.min(1000, Math.round(1000 * Math.exp(-distanceMiles / 55))));
+    if(isBullseye(distanceMiles)) return 1000;
+    return Math.max(0, Math.min(1000, Math.round(1000 * Math.exp(-(distanceMiles - BULLSEYE_MILES) / 55))));
   }
 
   const LOCATION_GROUPS = [
@@ -792,13 +801,15 @@
     const loc = LOCATIONS[order[round]];
     const dist = haversineMiles(guessLatLon.lat, guessLatLon.lng, loc.lat, loc.lon);
     const pts = scoreFor(dist);
+    const bullseye = isBullseye(dist);
     score += pts;
-    results.push({name: loc.name, dist, pts});
+    results.push({name: loc.name, dist, pts, bullseye});
     trackEvent('guess_submitted', {
       game_version: GAME_VERSION,
       game_mode: gameMode,
       round_number: round + 1,
       distance_miles: Number(dist.toFixed(1)),
+      bullseye: bullseye ? 1 : 0,
       points: pts,
       current_score: score,
       round_elapsed_seconds: Math.round((Date.now() - roundStartedAt) / 1000)
@@ -812,7 +823,7 @@
     el('result-place').textContent = loc.name;
     el('result-fact').textContent = loc.fact;
     el('result-pts').textContent = '+' + pts;
-    el('result-dist').textContent = dist.toFixed(1) + ' miles off';
+    el('result-dist').textContent = (bullseye ? 'Bullseye! ' : '') + dist.toFixed(1) + ' miles off';
     el('result-block').classList.remove('hidden');
     el('guess-actions').classList.add('hidden');
     el('hud-score').textContent = String(score);
@@ -890,7 +901,7 @@
       const tr = document.createElement('tr');
       const outcome = gameMode === 'easy'
         ? (r.correct ? 'Correct' : 'Incorrect')
-        : r.dist.toFixed(1) + ' mi';
+        : r.dist.toFixed(1) + ' mi' + (r.bullseye ? ' \u00b7 Bullseye' : '');
       tr.innerHTML = `<td>${i+1}</td><td>${r.name}</td><td>${outcome}</td><td>${r.pts}</td>`;
       tbody.appendChild(tr);
     });
@@ -973,7 +984,7 @@
       ctx.textAlign = 'right';
       const outcome = gameMode === 'easy'
         ? (result.correct ? 'Correct' : 'Wrong')
-        : result.dist.toFixed(1) + ' mi';
+        : (result.bullseye ? 'Bullseye' : result.dist.toFixed(1) + ' mi');
       ctx.fillText(outcome, 830, y);
       ctx.fillStyle = '#295C52';
       ctx.font = '700 27px Inter, Arial, sans-serif';

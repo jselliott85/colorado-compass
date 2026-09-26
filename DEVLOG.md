@@ -11,7 +11,8 @@ up to 1,000 points each. Players choose a mode before starting:
 
 - **Easy:** choose the location from five answers. Correct is worth 1,000 points; wrong is 0.
 - **Hard:** drop a pin on a reference map of the state. Distance from the true location determines
-  the score using exponential decay.
+  the score using exponential decay, with any guess within 3 miles counted as a full-points
+  bullseye (see "Hard-mode bullseye" below).
 
 The two modes share the same location pool and round flow, but keep separate local best scores.
 Existing `coCompassBest` scores from before v2 are treated as Hard-mode scores.
@@ -369,6 +370,20 @@ and every Esri problem found so far had been fixed by switching that scene to US
 - **Re-framed in the same pass:** Gross Reservoir, Grand Lake, Turquoise Lake, and Eldora were
   re-centered on the feature (which also moves their scoring point onto it); Boulder Reservoir
   and Keystone desktop views were zoomed out.
+
+## Hard-mode bullseye (v2.3)
+
+Any guess within 3 miles of the scoring point (`BULLSEYE_MILES`) earns the full 1,000 and is
+labeled "Bullseye!" in the round result, the final breakdown, and the share card. Past that, the
+exponential falloff starts at the bullseye edge instead of at 0 miles:
+`1000 * exp(-(d - 3) / 55)`. Shifting the curve avoids a cliff (the unshifted curve would drop
+from 1,000 at 3.0 mi to 945 at 3.1 mi), at the cost of every non-bullseye guess scoring ~5%
+more than before (10 mi: 834 -> 880; 50 mi: 403 -> 425). Hard-mode personal bests from before
+v2.3 are therefore slightly easier to beat; they were left as-is.
+
+The bullseye test uses the distance rounded to 0.1 mi, the same value shown to the player, so a
+guess shown as "3.0 miles off" is always a bullseye. `guess_submitted` analytics events carry a
+`bullseye` flag (1/0).
 
 ## Possible next steps (not yet done)
 
