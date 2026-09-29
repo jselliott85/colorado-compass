@@ -96,13 +96,19 @@ def post_envelope(url: str, body: bytes) -> dict[str, object]:
                 raise RelayError("Apps Script intake did not acknowledge the observations.")
             return result
         except urllib.error.HTTPError as error:
-            if error.code not in (429, 500, 502, 503, 504) or attempt == 2:
+            # Apps Script can finish the Sheet write but fail to serve its
+            # one-time ContentService response. Retry the original signed POST;
+            # timestamp upserts make a repeated write safe.
+            if error.code not in (404, 429, 500, 502, 503, 504) or attempt == 2:
                 raise RelayError(f"Apps Script intake returned HTTP {error.code}.") from None
+            print(f"Apps Script acknowledgement returned HTTP {error.code}; retrying.", file=sys.stderr)
         except (urllib.error.URLError, TimeoutError):
             if attempt == 2:
                 raise RelayError("Could not reach the Apps Script intake.") from None
         except (ValueError, UnicodeDecodeError):
-            raise RelayError("Apps Script intake returned an invalid response.") from None
+            if attempt == 2:
+                raise RelayError("Apps Script intake returned an invalid response.") from None
+            print("Apps Script acknowledgement was unreadable; retrying.", file=sys.stderr)
         time.sleep(2 ** attempt)
     raise RelayError("Apps Script intake did not complete.")
 

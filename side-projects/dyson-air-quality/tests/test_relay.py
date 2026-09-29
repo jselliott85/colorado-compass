@@ -1,10 +1,13 @@
 import hashlib
 import hmac
 import importlib.util
+import io
 import json
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
+from urllib.error import HTTPError
 
 
 MODULE_DIR = Path(__file__).resolve().parents[1]
@@ -39,6 +42,62 @@ class RelayTests(unittest.TestCase):
         expected = hmac.new(b"secret" * 8, envelope["payload"].encode(), hashlib.sha256).hexdigest()
         self.assertEqual(envelope["signature"], expected)
         self.assertNotIn("secret", envelope["payload"])
+
+    def test_retries_404_after_a_completed_write_with_the_same_signed_body(self):
+        url = "https://script.google.com/macros/s/test/exec"
+        body = b"signed-envelope"
+        failure = HTTPError(url, 404, "Not Found", {}, None)
+        acknowledgement = io.BytesIO(b'{"ok":true,"rows_received":2}')
+        with patch.object(relay.urllib.request, "urlopen", side_effect=[failure, acknowledgement]) as fetch, \
+                patch.object(relay.time, "sleep") as sleep:
+            result = relay.post_envelope(url, body)
+        self.assertEqual(result["rows_received"], 2)
+        self.assertEqual(fetch.call_count, 2)
+        self.assertEqual([call.args[0].full_url for call in fetch.call_args_list], [url, url])
+        self.assertEqual([call.args[0].data for call in fetch.call_args_list], [body, body])
+        sleep.assert_called_once_with(1)
+
+    def test_retries_unreadable_acknowledgement(self):
+        url = "https://script.google.com/macros/s/test/exec"
+        with patch.object(relay.urllib.request, "urlopen", side_effect=[
+            io.BytesIO(b"not-json"), io.BytesIO(b'{"ok":true,"rows_received":1}')
+        ]) as fetch, patch.object(relay.time, "sleep") as sleep:
+            result = relay.post_envelope(url, b"signed-envelope")
+        self.assertEqual(result["rows_received"], 1)
+        self.assertEqual(fetch.call_count, 2)
+        sleep.assert_called_once_with(1)
+
+    def test_persistent_404_still_fails_after_three_attempts(self):
+        url = "https://script.google.com/macros/s/test/exec"
+        with patch.object(relay.urllib.request, "urlopen", side_effect=[
+            HTTPError(url, 404, "Not Found", {}, None) for _ in range(3)
+        ]) as fetch, patch.object(relay.time, "sleep") as sleep:
+            with self.assertRaisesRegex(relay.RelayError, "HTTP 404"):
+                relay.post_envelope(url, b"signed-envelope")
+        self.assertEqual(fetch.call_count, 3)
+        self.assertEqual([call.args[0].full_url for call in fetch.call_args_list], [url] * 3)
+        self.assertEqual([call.args[0].data for call in fetch.call_args_list], [b"signed-envelope"] * 3)
+        self.assertEqual([call.args[0] for call in sleep.call_args_list], [1, 2])
+
+    def test_persistent_unreadable_response_still_fails(self):
+        url = "https://script.google.com/macros/s/test/exec"
+        with patch.object(relay.urllib.request, "urlopen", side_effect=[
+            io.BytesIO(b"not-json") for _ in range(3)
+        ]) as fetch, patch.object(relay.time, "sleep") as sleep:
+            with self.assertRaisesRegex(relay.RelayError, "invalid response"):
+                relay.post_envelope(url, b"signed-envelope")
+        self.assertEqual(fetch.call_count, 3)
+        self.assertEqual([call.args[0] for call in sleep.call_args_list], [1, 2])
+
+    def test_rejected_signature_is_not_retried(self):
+        url = "https://script.google.com/macros/s/test/exec"
+        with patch.object(relay.urllib.request, "urlopen", return_value=io.BytesIO(
+            b'{"ok":false,"error":"authentication_failed"}'
+        )) as fetch, patch.object(relay.time, "sleep") as sleep:
+            with self.assertRaisesRegex(relay.RelayError, "authentication_failed"):
+                relay.post_envelope(url, b"signed-envelope")
+        fetch.assert_called_once()
+        sleep.assert_not_called()
 
 
 if __name__ == "__main__":

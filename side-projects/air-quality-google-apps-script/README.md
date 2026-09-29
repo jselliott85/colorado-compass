@@ -89,7 +89,7 @@ The relay sends normalized 15-minute readings signed with HMAC-SHA256. The intak
 
 The trigger runs every six hours. Each source is isolated: one source failing does not roll back successful sources. Repeated writes use `timestamp_utc` as the key, so retries update rather than duplicate rows.
 
-Dyson health is updated by successful signed intake. A failed GitHub run leaves the last-success timestamp stale; the scheduled Apps Script check escalates after 36 hours. At 120 hours, `Source_Status` reports a critical under-48-hours-before-history-loss state. When `ALERT_EMAIL` is configured, alerts are rate-limited to one per 24 hours.
+Dyson health is updated by successful signed intake. The relay retries transient HTTP 404 or unreadable Apps Script acknowledgements using the same signed POST; timestamp upserts prevent duplicate observations. It still fails if no valid acknowledgement arrives after three attempts or if authentication is rejected. A failed GitHub run can still have written observations; check `Source_Status` before assuming data was missed. The scheduled Apps Script check escalates after 36 hours without a successful intake. At 120 hours, `Source_Status` reports a critical under-48-hours-before-history-loss state. When `ALERT_EMAIL` is configured, alerts are rate-limited to one per 24 hours.
 
 ## Next step — deferred
 
