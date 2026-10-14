@@ -1,0 +1,45 @@
+name: NCAR Foothills comparator (manual until validated)
+
+on:
+  workflow_dispatch:
+    inputs:
+      start:
+        description: 'Optional first UTC date (YYYY-MM-DD); supply end too'
+        required: false
+        type: string
+      end:
+        description: 'Optional last completed UTC date (YYYY-MM-DD)'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ncar-foothills-collection
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    if: vars.NCAR_FOOTHILLS_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Install NetCDF reader
+        run: python3 -m pip install -r side-projects/air-quality-google-apps-script/scripts/ncar-requirements.txt
+      - name: Collect and deliver signed NCAR archive observations
+        env:
+          DYSON_INGEST_URL: ${{ secrets.DYSON_INGEST_URL }}
+          DYSON_INGEST_SECRET: ${{ secrets.DYSON_INGEST_SECRET }}
+          NCAR_START: ${{ inputs.start }}
+          NCAR_END: ${{ inputs.end }}
+        shell: bash
+        run: |
+          args=()
+          if [[ -n "$NCAR_START" || -n "$NCAR_END" ]]; then
+            args+=(--start "$NCAR_START" --end "$NCAR_END")
+          fi
+          python3 -B side-projects/air-quality-google-apps-script/scripts/ncar_collect.py --publish "${args[@]}"

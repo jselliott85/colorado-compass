@@ -3,7 +3,7 @@
  * Tempest credentials and the Dyson intake secret live in Script Properties.
  */
 
-const AQ_SCHEMA_VERSION = '1.1.0';
+const AQ_SCHEMA_VERSION = '1.2.0';
 const AQ_DEFAULT_TIME_ZONE = 'America/Denver';
 const AQ_INITIAL_DATE = '2026-09-20';
 const AQ_BIN_MINUTES = 15;
@@ -20,6 +20,8 @@ const AQ_SHEETS = Object.freeze({
   TEMPEST: 'Tempest_15min',
   REGIONAL: 'Regional_AQ_15min',
   CARRIAGE: 'Carriage_Hills_15min',
+  NCAR: 'NCAR_Foothills_15min',
+  NCAR_NATIVE: 'NCAR_Foothills_Native',
   EVENTS: 'Events',
   STATUS: 'Source_Status',
   HEALTH: 'Health_Log',
@@ -93,7 +95,18 @@ const AQ_MASTER_HEADERS = Object.freeze([
   'carriage_precip_rate_mm_h',
   'carriage_precip_total_mm',
   'carriage_qc_status',
-  'carriage_present'
+  'carriage_present',
+  'ncar_foothills_present',
+  'ncar_foothills_observation_count',
+  'ncar_foothills_coverage_fraction',
+  'ncar_foothills_temperature_c',
+  'ncar_foothills_dew_point_c',
+  'ncar_foothills_relative_humidity_pct',
+  'ncar_foothills_station_pressure_hpa',
+  'ncar_foothills_wind_speed_ms',
+  'ncar_foothills_wind_direction_deg',
+  'ncar_foothills_peak_gust_ms',
+  'ncar_foothills_precipitation_mm'
 ]);
 
 const AQ_DYSON_HEADERS = Object.freeze([
@@ -127,6 +140,23 @@ const AQ_CARRIAGE_HEADERS = Object.freeze([
   'timestamp_utc', 'timestamp_local', 'station_id', 'epoch',
 ].concat(AQ_CARRIAGE_FIELDS, [
   'wind_direction_trust', 'pressure_basis', 'precip_total_semantics', 'ingested_at_utc'
+]));
+
+const AQ_NCAR_FIELDS = Object.freeze([
+  'temperature_c', 'dew_point_c', 'relative_humidity_pct', 'station_pressure_hpa',
+  'wind_speed_ms', 'wind_direction_deg', 'peak_gust_ms'
+]);
+const AQ_NCAR_NATIVE_HEADERS = Object.freeze([
+  'timestamp_utc', 'timestamp_local'
+].concat(AQ_NCAR_FIELDS, [
+  'rain_accum_mm', 'rain_daily_mm', 'rain_event_mm', 'source', 'ingested_at_utc'
+]));
+const AQ_NCAR_HEADERS = Object.freeze([
+  'timestamp_utc', 'timestamp_local', 'observation_count', 'expected_observation_count',
+  'coverage_fraction'
+].concat(AQ_NCAR_FIELDS, [
+  'precipitation_mm', 'wind_direction_observation_count', 'source',
+  'timestamp_convention', 'gust_definition', 'precipitation_status', 'ingested_at_utc'
 ]));
 
 const AQ_EVENT_HEADERS = Object.freeze([
@@ -178,6 +208,7 @@ function aqConfig_() {
     keepRaw: String(properties.KEEP_RAW || 'true').toLowerCase() !== 'false',
     alertEmail: properties.ALERT_EMAIL || '',
     dysonIngestSecret: properties.DYSON_INGEST_SECRET || '',
+    ncarEnabled: properties.NCAR_FOOTHILLS_ENABLED !== 'false',
     carriageEnabled: properties.CARRIAGE_HILLS_ENABLED === 'true',
     wuApiKey: properties.WU_API_KEY || '',
     tempestToken: properties.TEMPEST_TOKEN || '',

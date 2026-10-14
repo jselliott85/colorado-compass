@@ -31,7 +31,7 @@ function formatDate(date, timeZone, pattern) {
   throw new Error(`Unsupported test format: ${pattern}`);
 }
 
-function loadRuntime(exposed) {
+function loadRuntime(exposed, propertyValues = {}) {
   const files = fs.readdirSync(sourceDir).filter((name) => name.endsWith('.js')).sort();
   const code = files.map((name) => fs.readFileSync(path.join(sourceDir, name), 'utf8')).join('\n');
   const context = {
@@ -57,7 +57,7 @@ function loadRuntime(exposed) {
     },
     PropertiesService: {
       getScriptProperties: () => ({
-        getProperties: () => ({ DYSON_INGEST_SECRET: 'test-secret-which-is-long-enough-for-hmac' })
+        getProperties: () => ({ DYSON_INGEST_SECRET: 'test-secret-which-is-long-enough-for-hmac', ...propertyValues })
       })
     },
   };
@@ -273,4 +273,107 @@ test('Carriage history dates follow Denver and health distinguishes empty/stale 
   assert.equal(r.aqCarriageHealth_('2026-10-14T05:00:00Z', now).status, 'stale');
   assert.equal(r.aqCarriageHealth_('2026-10-14T17:45:00Z', now).status, 'success');
   assert.equal(r.aqSafeMessage_('https://api.weather.com/?apiKey=private-secret&date=20261013').includes('private-secret'), false);
+});
+
+function ncarRow(timestamp, overrides = {}) {
+  return {timestamp_utc: timestamp, temperature_c: 10, dew_point_c: 4,
+    relative_humidity_pct: 60, station_pressure_hpa: 835, wind_speed_ms: 2,
+    wind_direction_deg: 350, peak_gust_ms: 5, rain_accum_mm: 73.2,
+    rain_daily_mm: 0, rain_event_mm: 0, ...overrides};
+}
+
+test('NCAR aggregation uses vectors, preserves missing values and never sums rain counters', () => {
+  const r = loadRuntime(['aqAggregateNcar_']);
+  const rows = r.aqAggregateNcar_([
+    ncarRow('2026-09-24T12:00:00Z'),
+    ncarRow('2026-09-24T12:05:00Z', {wind_direction_deg: 10, peak_gust_ms: 8, temperature_c: null}),
+    ncarRow('2026-09-24T12:20:00Z', {rain_accum_mm: 0, relative_humidity_pct: null})
+  ]);
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0].observation_count, 2);
+  assert.equal(rows[0].expected_observation_count, 3);
+  assert.equal(rows[0].coverage_fraction, 0.666667);
+  assert.equal(rows[0].wind_direction_deg, 0);
+  assert.equal(rows[0].peak_gust_ms, 8);
+  assert.equal(rows[0].temperature_c, 10);
+  assert.equal(rows[0].precipitation_mm, null);
+  assert.equal(rows[1].precipitation_mm, null);
+  assert.equal(rows[1].relative_humidity_pct, null);
+  assert.equal(rows[1].wind_direction_deg, null, 'one wind sample is insufficient');
+});
+
+test('NCAR handles calm/cancelling wind, midnight duplicates, DST and invalid revisions', () => {
+  const r = loadRuntime(['aqAggregateNcar_']);
+  const rows = r.aqAggregateNcar_([
+    ncarRow('2026-11-01T07:00:00Z', {wind_direction_deg: 90}),
+    ncarRow('2026-11-01T07:05:00Z', {wind_direction_deg: 270}),
+    ncarRow('2026-11-01T08:00:00Z', {wind_speed_ms: 0}),
+    ncarRow('2026-11-01T08:05:00Z', {wind_speed_ms: 0}),
+    ncarRow('2026-11-01T08:05:00Z', {wind_speed_ms: 0})
+  ]);
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0].wind_direction_deg, null);
+  assert.equal(rows[1].wind_direction_deg, null);
+  assert.equal(rows[1].observation_count, 2);
+  assert.match(rows[0].timestamp_local, /01:00:00-06:00$/);
+  assert.match(rows[1].timestamp_local, /01:00:00-07:00$/);
+  const invalid = ncarRow('2026-09-24T12:00:00Z');
+  for (const key of Object.keys(invalid)) if (key !== 'timestamp_utc') invalid[key] = null;
+  const cleared = r.aqAggregateNcar_([invalid]);
+  assert.equal(cleared[0].observation_count, 0);
+  assert.equal(cleared[0].coverage_fraction, 0);
+  assert.equal(cleared[0].temperature_c, null);
+});
+
+test('NCAR intake requires activation and exact signed station/date/field constraints', () => {
+  const r = loadRuntime(['aqVerifyNcarEnvelope_'], {NCAR_FOOTHILLS_ENABLED: 'true'});
+  const now = new Date();
+  const timestamp = new Date(Math.floor(now.getTime() / 300000) * 300000).toISOString().replace('.000Z','Z');
+  const payload = {version: 1, source: 'ncar_foothills', file_date: timestamp.slice(0,10),
+    sent_at_utc: now.toISOString().replace(/\.\d{3}Z$/, 'Z'), rows: [ncarRow(timestamp)], netcdf_base64: 'SE R G'.replace(/ /g,'')};
+  function event(value) {
+    const body = JSON.stringify(value);
+    return {postData: {contents: JSON.stringify({payload: body,
+      signature: crypto.createHmac('sha256','test-secret-which-is-long-enough-for-hmac').update(body).digest('hex')})}};
+  }
+  assert.equal(r.aqVerifyNcarEnvelope_(event(payload)).rows.length, 1);
+  assert.throws(() => loadRuntime(['aqVerifyNcarEnvelope_'], {NCAR_FOOTHILLS_ENABLED: 'false'}).aqVerifyNcarEnvelope_(event(payload)), /authentication_failed/);
+  assert.throws(() => r.aqVerifyNcarEnvelope_(event({...payload, source: 'dyson'})), /invalid_payload/);
+  assert.throws(() => r.aqVerifyNcarEnvelope_(event({...payload, rows: [ncarRow(timestamp, {station_pressure_hpa: 0})]})), /invalid_payload/);
+  assert.throws(() => r.aqVerifyNcarEnvelope_(event({...payload, sent_at_utc: '2020-01-01T00:00:00Z'})), /invalid_payload/);
+  assert.throws(() => r.aqVerifyNcarEnvelope_(event({...payload, rows: [payload.rows[0],payload.rows[0]]})), /invalid_payload/);
+  const tampered = event(payload);
+  tampered.postData.contents = tampered.postData.contents.replace('ncar_foothills', 'other_source');
+  assert.throws(() => r.aqVerifyNcarEnvelope_(tampered), /authentication_failed/);
+});
+
+test('NCAR publication-aware health flags missing/stale observations', () => {
+  const r = loadRuntime(['aqNcarHealth_']);
+  const now = new Date('2026-10-14T18:00:00Z');
+  assert.equal(r.aqNcarHealth_('', now).status, 'stale');
+  assert.equal(r.aqNcarHealth_('2026-10-14T00:00:00Z', now).status, 'success');
+  assert.equal(r.aqNcarHealth_('2026-10-13T00:00:00Z', now).status, 'stale');
+});
+
+test('append-only master migration preserves populated legacy columns and rejects mismatches', () => {
+  for (const oldSchema of ['original', 'carriage']) {
+    let sheet;
+    const r = loadRuntime(['AQ_MASTER_HEADERS', 'aqEnsureSheet_',
+      'setSheet: function(mock) { aqSpreadsheet_ = function() { return {getSheetByName: function() { return mock; }}; }; }']);
+    const headers = Array.from(r.AQ_MASTER_HEADERS);
+    const boundary = headers.indexOf(oldSchema === 'original' ? 'carriage_wind_speed_kmh' : 'ncar_foothills_present');
+    let stored = headers.slice(0,boundary);
+    const cells = ['existing', 42, 'preserve'];
+    const chain = {setFontWeight(){return this;},setBackground(){return this;},setFontColor(){return this;},setWrap(){return this;}};
+    sheet = {getMaxColumns: () => headers.length, getLastRow: () => 2,
+      getRange: () => ({...chain, getDisplayValues: () => [[...stored,...Array(headers.length-stored.length).fill('')]],
+        setValues: (values) => {stored = Array.from(values[0]);return chain;}}),
+      setFrozenRows(){},setRowHeight(){},setColumnWidth(){},setColumnWidths(){}};
+    r.setSheet(sheet);
+    r.aqEnsureSheet_('Master_15min',r.AQ_MASTER_HEADERS);
+    assert.deepEqual(Array.from(stored),headers);
+    assert.deepEqual(cells,['existing',42,'preserve']);
+    stored[2] = 'unexpected_column';
+    assert.throws(() => r.aqEnsureSheet_('Master_15min',r.AQ_MASTER_HEADERS),/Schema mismatch/);
+  }
 });

@@ -75,6 +75,7 @@ function aqRunCollection_(extendedBackfill) {
         return aqRebuildMaster_(affectedStart, aqUtcIso_(new Date()));
       });
     }
+    aqRefreshNcarStatus_();
     aqRefreshDysonStatus_();
     aqCheckDysonAlert_();
   } finally {
@@ -137,6 +138,10 @@ function aqRunSource_(runId, source, callback) {
     }
     const failures = Number(properties.getProperty(statusPrefix + 'CONSECUTIVE_FAILURES') || 0) + 1;
     properties.setProperty(statusPrefix + 'CONSECUTIVE_FAILURES', String(failures));
+  }
+  if (source === 'ncar_foothills') {
+    properties.setProperty(statusPrefix + 'LAST_ATTEMPT_UTC', aqUtcIso_(new Date()));
+    properties.setProperty(statusPrefix + 'LAST_ERROR', status === 'error' ? message : '');
   }
   const finished = new Date();
   const lastSuccess = properties.getProperty(statusPrefix + 'LAST_SUCCESS_UTC') || '';

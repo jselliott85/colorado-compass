@@ -7,6 +7,16 @@ const AQ_DYSON_RELAY_FIELDS = Object.freeze([
 ]);
 
 function doPost(e) {
+  // The discriminator selects a verifier; only a valid HMAC over the exact payload authorizes writes.
+  try {
+    const raw = e && e.postData && e.postData.contents;
+    if (typeof raw === 'string' && raw.length <= 800000) {
+      const envelope = JSON.parse(raw);
+      const payload = JSON.parse(envelope.payload);
+      if (payload && payload.source === 'ncar_foothills') return aqReceiveNcar_(e);
+    }
+  } catch (error) { /* Existing Dyson verifier supplies the sanitized rejection. */ }
+
   let rows;
   try {
     rows = aqVerifyDysonEnvelope_(e);

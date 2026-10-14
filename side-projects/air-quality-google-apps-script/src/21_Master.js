@@ -10,6 +10,7 @@ function aqRebuildMaster_(startUtc, endUtc) {
   const tempest = aqIndexRows_(aqReadRowsBetween_(AQ_SHEETS.TEMPEST, AQ_TEMPEST_HEADERS, first, last));
   const regional = aqIndexRows_(aqReadRowsBetween_(AQ_SHEETS.REGIONAL, AQ_REGIONAL_HEADERS, first, last));
   const carriage = aqIndexRows_(aqReadRowsBetween_(AQ_SHEETS.CARRIAGE, AQ_CARRIAGE_HEADERS, first, last));
+  const ncar = aqIndexRows_(aqReadRowsBetween_(AQ_SHEETS.NCAR, AQ_NCAR_HEADERS, first, last));
   const rows = [];
   for (let instant = start.getTime(); instant <= end.getTime(); instant += AQ_BIN_MINUTES * 60000) {
     const timestamp = new Date(instant);
@@ -22,7 +23,10 @@ function aqRebuildMaster_(startUtc, endUtc) {
     const sourceRegional = regional[key] || null;
     const r = aqRegionalHasObservation_(sourceRegional) ? sourceRegional : null;
     const c = carriage[key] || null;
+    const sourceNcar = ncar[key] || null;
+    const n = sourceNcar && Number(sourceNcar.observation_count) > 0 ? sourceNcar : null;
     const missing = [];
+    if (config.ncarEnabled && !n) missing.push('ncar_foothills');
     if (config.carriageEnabled && !c) missing.push('carriage_hills');
     if (!d) missing.push('dyson');
     if (!t) missing.push('tempest');
@@ -86,6 +90,12 @@ function aqRebuildMaster_(startUtc, endUtc) {
       carriage_present: Boolean(c)
     };
     AQ_CARRIAGE_FIELDS.forEach(function(field) { row['carriage_' + field] = c ? c[field] : null; });
+    row.ncar_foothills_present = Boolean(n);
+    row.ncar_foothills_observation_count = n ? n.observation_count : 0;
+    row.ncar_foothills_coverage_fraction = n ? n.coverage_fraction : 0;
+    AQ_NCAR_FIELDS.concat(['precipitation_mm']).forEach(function(field) {
+      row['ncar_foothills_' + field] = n ? n[field] : null;
+    });
     rows.push(row);
   }
   return aqUpsertRows_(AQ_SHEETS.MASTER, AQ_MASTER_HEADERS, rows);

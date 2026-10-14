@@ -206,3 +206,154 @@ six-hour NR1 polling, backfill, source table, or master fields have been activat
 Source roles remain: Dyson = indoor AQ; Tempest = primary hyperlocal weather; CDPHE = regional
 outdoor AQ; Carriage Hills = paused/manual or provisional nearby comparator; US-NR1 = proposed
 regional forest-atmosphere research comparator awaiting current-data access.
+
+
+## NCAR Foothills — verified archive; deployment deferred pending interval semantics
+
+Investigation on **2026-10-14**, following the NCAR link supplied by the owner from Sean Burns:
+
+- Official information: <https://www.eol.ucar.edu/content/ncar-foothills-lab-weather-station-information>.
+- Official public archive guide: <https://archive.eol.ucar.edu/weather/data/>.
+- Preferred ingestion path: daily binary NetCDF files at
+  `https://archive.eol.ucar.edu/weather/data/foothills/flab.YYYYMMDD.nc`.
+  No account, key, payment, browser automation, or observation HTML parsing is needed.
+- The live CGI page reported Operational with observations dated October 14. It advertises
+  five-minute plot updates; this is not a guarantee of archive publication latency.
+- All 25 daily files tested, September 19 through October 13, downloaded with HTTP 200. September
+  19 supplies preceding-day context for the September 20 start. The October 14 file returned 404
+  during the investigation. Recent completed files had Last-Modified timestamps about 00:15 UTC
+  on the following day. Prefer the published daily archive over scraping today's CGI summary;
+  budget for day-scale latency and do not treat a not-yet-published current-day file as an outage.
+- Downloaded files and machine-readable validation are retained locally under ignored
+  `tmp/ncar-foothills-verification/`. They have not been uploaded to the private Drive archive.
+
+Station identity in the files: NSF NCAR Foothills Lab; 40.035 N, -105.243 E; altitude 1,625 m
+(about 5,331 ft). This is approximately 2,000 ft lower than the home. It is a **regional comparator**,
+never a local measurement or substitute for Tempest. Wind represents NCAR's rooftop conditions,
+not local flow at the house. NCAR warns of temperature bias from rooftop heating and reduced
+wind readings due to nearby buildings, particularly during strong westerly events. The archive
+explicitly says these data are not research quality and are not quality controlled. The RAINCAP
+precipitation sensor does not reliably measure snow, fog or dew. Retain these caveats in any future
+sheet README, Schema and source metadata; do not encode atmospheric/VOC conclusions in the collector.
+
+Verified native variables and units:
+
+| NetCDF field | Meaning | Units |
+| --- | --- | --- |
+| `tdry` | Air temperature | degC |
+| `dewpoint` | Derived dew point | degC |
+| `rh` | Relative humidity | % |
+| `pres` | Station air pressure | hPa |
+| `cpres0` | Corrected sea-level pressure; separate from `pres` | hPa |
+| `wspd` | Wind speed average | m/s |
+| `wdir` | Wind direction average | degrees |
+| `wspd_max` | Wind speed maximum | m/s |
+| `rain_accum` | Cumulative rain counter | mm |
+| `raina_daily` | Rain accumulation resetting at local midnight | mm |
+| `raina_event` | Rain accumulation resetting after one dry hour | mm |
+
+Files use CF-1.7, `calendar=standard`, and `seconds since YYYY-MM-DD 00:00:00 +0000`.
+These are UTC observation-axis timestamps, distinct from the file's publication/Last-Modified time.
+Typical files have 289 timestamps at 300-second spacing, including both midnight endpoints;
+neighboring files overlap at midnight and must deduplicate by exact UTC time. September 24 has
+283 records with a 35-minute gap; September 26 has 287 records with a 15-minute gap. Do not fill
+those periods. The webpage identifies -99.9 as invalid/missing; also honor NetCDF masks,
+fill/missing attributes and nonfinite values. Invalid derived values need validation, not zero fill.
+
+Across the tested window, temperature ranged 8.1–31.69 degC, RH 10.85–98.62%, station pressure
+826.31–848.42 hPa, speed 0.010–6.402 m/s and maximum speed 0.3–16.4 m/s. A basic daily-mean
+comparison against local Tempest exports for September 20–25 showed plausible broad temperature/RH
+changes with site differences. This is a preliminary validation, not a scientific association test.
+
+**Why no integration/deployment yet:** NetCDF variables have no `time_bounds` or `cell_methods`
+defining whether the average is start-, center-, or end-labeled. The linked gust description refers
+to older Coastal hardware while the station page names Vaisala WXT510; the current gust averaging
+and peak reset interval are not confidently verified. `rain_accum` dropped from about 73.2 mm to zero
+across the September 24 gap. Never sum these cumulative values or invent rain across a reset/gap.
+The U/V component descriptions also appear inconsistent with their numeric relationship to `wdir`;
+a future direction aggregator should derive vectors from valid `wspd`/`wdir` pairs instead of
+trusting component labels. Calm direction and near-zero resultant vectors must remain missing.
+
+Initial recommendation was to establish the averaging timestamp convention, current gust
+duration/reset window and counter behavior before deployment. These are retained as limitations
+for the provisional implementation below: published observation labels remain unshifted, gusts
+are explicitly provisional, and interval precipitation is withheld. The recommended architecture
+was a NetCDF-capable collector (Python is more appropriate than adding an
+HDF5 decoder to Apps Script), UTC upserts, native raw retention, the requested
+`NCAR_Foothills_15min` and prefixed master fields, vector averaging, field-level missingness,
+coverage, and publication-aware health monitoring. Keep the existing six-hour cadence and refresh
+recent published UTC days. Only compute interval precipitation for adjacent valid counter samples
+with a verified convention; leave resets/gaps blank. Validate DST and interval edges before marking
+production-ready. No NCAR sheet, source status row, trigger or deployed collector has been created.
+
+
+### NCAR provisional implementation
+
+The owner authorized proceeding with next steps. Sean's anticipated follow-up is specifically for
+**US-NR1 five-minute data**, not NCAR Foothills definitions; those remain separate workstreams.
+The unresolved interval alignment and gust duration limit timing/cross-instrument interpretation;
+they do not block retention of the published observations as a provisional regional comparator.
+Rain-counter semantics block only interval precipitation, which remains missing.
+
+Implemented source tables: `NCAR_Foothills_Native` and `NCAR_Foothills_15min`; master columns use
+`ncar_foothills_` prefixes. Neither source writes Tempest values. The schema migration appends
+columns while refusing mismatched populated schemas. Raw NetCDF revisions use immutable SHA-256
+filenames in the existing private archive, so retries reuse a file and revisions preserve old bytes.
+
+The Python reader validates station identity, location, UTC axis, units and shape, preserving native
+UTC labels and gaps. NetCDF masks, nonfinite values, -99.9 and broad physically invalid readings become
+missing; original bytes remain available. Quarter-hour means use valid reported readings in
+`[bin_start, bin_start + 15 minutes)`, with no source time shift. Counts/coverage describe native
+record availability (3 expected); individual fields can have fewer valid values. Direction uses
+speed-weighted vectors from at least two valid positive-speed pairs, with near-zero resultants blank.
+Peak gust is the maximum reported `wspd_max`, with duration unconfirmed. Native cumulative rain
+counters are retained, but **all interval precipitation is blank**. A missing/revised-invalid source
+record must not silently become a zero weather reading.
+
+The reader sends daily files and native observations through HMAC-signed POSTs to the existing
+Apps Script intake, using the existing private relay URL and signing secret. NCAR requests have
+an authenticated source discriminator, bounded file/row sizes, timestamp/field validation and
+idempotent UTC upserts; the existing Dyson request format is retained. No new public read endpoint
+is introduced. `Source_Status` distinguishes disabled, stale/error and success, with explicit
+provisional caveats. Observation age over 36 hours is stale, allowing for daily archive publication.
+A failed external fetch is visible in Actions; scheduled Apps Script health refresh detects
+staleness even if the relay cannot reach the intake. Always inspect last-attempt timestamps too.
+
+Local validation used the actual September 20–October 13 files: **6,833 unique native observations**
+from September 20 06:00 UTC through October 14 00:00 UTC, producing **2,280 populated quarter-hour
+rows**. One fully absent quarter-hour remains absent; five bins have partial coverage, including
+the final midnight endpoint. Every interval precipitation value remains missing. Original missing
+periods were retained, and the first date is bounded at September 20 local midnight (MDT).
+
+Read-only local collection (default: the three most recent completed UTC dates):
+
+```bash
+python3 -m venv /tmp/ncar-venv
+/tmp/ncar-venv/bin/pip install -r scripts/ncar-requirements.txt
+/tmp/ncar-venv/bin/python scripts/ncar_collect.py
+/tmp/ncar-venv/bin/python scripts/ncar_collect.py --start 2026-09-20 --end 2026-10-13
+/tmp/ncar-venv/bin/python -m unittest discover -s tests -p 'test_ncar.py' -v
+```
+
+All local outputs default to ignored `tmp/ncar-foothills/`. For a cached verification run, supply
+`--offline --cache-dir tmp/ncar-foothills-verification`. Nothing is published without `--publish`.
+
+Activation steps, not yet performed:
+
+1. Push the reviewed source to the **existing** bound Apps Script project and update its existing
+   web-app deployment, preserving the current intake URL and Dyson settings.
+2. Deployment enables the authorized provisional NCAR source by default; private Script Property
+   `NCAR_FOOTHILLS_ENABLED=false` pauses intake. Retain `KEEP_RAW=true`.
+   NCAR uses `DYSON_INGEST_SECRET`; no weather-source API key is required.
+3. Commit/push the new workflow and set repository variable `NCAR_FOOTHILLS_ENABLED=true`.
+   Manually run **NCAR Foothills comparator** with September 20 through the most recent completed
+   UTC date. Existing `DYSON_INGEST_URL` and `DYSON_INGEST_SECRET` repository secrets are reused.
+4. Verify acknowledgement counts, new source/native/master rows, Schema/README caveats, UTC/DST,
+   raw archive and Source_Status in the same private workbook. Verify the existing Dyson intake.
+5. Enable a six-hour `37 */6 * * *` cron only after that live check. Each scheduled run refreshes
+   the three most recent completed UTC dates; do not request an unpublished current-day file.
+
+The workflow is manual-only and gated off unless the repository variable is true; no live NCAR
+collection or six-hour NCAR schedule has been enabled. The public-repository Actions inactivity
+limitation documented above also applies when this schedule is enabled. This source is provisional,
+not a research-quality reference, and no analytical conclusions are encoded in collection.
