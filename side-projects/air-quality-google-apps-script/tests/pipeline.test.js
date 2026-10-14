@@ -377,3 +377,10 @@ test('append-only master migration preserves populated legacy columns and reject
     assert.throws(() => r.aqEnsureSheet_('Master_15min',r.AQ_MASTER_HEADERS),/Schema mismatch/);
   }
 });
+
+test('latest NCAR archive refreshes current master missing flags without expanding old backfills', () => {
+  const r = loadRuntime(['aqNcarMasterEnd_']);
+  const now = new Date('2026-10-14T22:30:00Z');
+  assert.equal(r.aqNcarMasterEnd_('2026-10-13','2026-10-14T00:00:00Z',now),'2026-10-14T22:30:00Z');
+  assert.equal(r.aqNcarMasterEnd_('2026-09-20','2026-09-21T00:00:00Z',now),'2026-09-21T00:00:00Z');
+});

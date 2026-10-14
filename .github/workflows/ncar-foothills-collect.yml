@@ -1,6 +1,8 @@
-name: NCAR Foothills comparator (manual until validated)
+name: NCAR Foothills comparator
 
 on:
+  schedule:
+    - cron: '37 */6 * * *'
   workflow_dispatch:
     inputs:
       start:
@@ -42,4 +44,4 @@ jobs:
           if [[ -n "$NCAR_START" || -n "$NCAR_END" ]]; then
             args+=(--start "$NCAR_START" --end "$NCAR_END")
           fi
-          python3 -B side-projects/air-quality-google-apps-script/scripts/ncar_collect.py --publish "${args[@]}"
+          python3 -u -B side-projects/air-quality-google-apps-script/scripts/ncar_collect.py --publish "${args[@]}"

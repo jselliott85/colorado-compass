@@ -112,7 +112,11 @@ function aqReceiveNcar_(event) {
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(30000)) return aqDysonResponse_({ ok: false, error: 'busy' });
   try {
-    aqInitializeSheets_();
+    const properties = aqProperties_();
+    if (properties.getProperty('NCAR_SCHEMA_INITIALIZED_VERSION') !== AQ_SCHEMA_VERSION) {
+      aqInitializeSheets_();
+      properties.setProperty('NCAR_SCHEMA_INITIALIZED_VERSION', AQ_SCHEMA_VERSION);
+    }
     const result = aqRunSource_(Utilities.getUuid(), 'ncar_foothills', function() {
       // Raw archive first: retry is safe if a later sheet write fails.
       aqArchiveNcarRaw_(data.fileDate, Utilities.base64Decode(data.netcdf));
@@ -121,7 +125,7 @@ function aqReceiveNcar_(event) {
       const last = aqUtcIso_(new Date(aqFloorQuarter_(nativeResult.latest).getTime() + 899000));
       const native = aqReadRowsBetween_(AQ_SHEETS.NCAR_NATIVE, AQ_NCAR_NATIVE_HEADERS, first, last);
       const aggregate = aqUpsertRows_(AQ_SHEETS.NCAR, AQ_NCAR_HEADERS, aqAggregateNcar_(native));
-      aqRebuildMaster_(first, aggregate.latest);
+      aqRebuildMaster_(first, aqNcarMasterEnd_(data.fileDate, aggregate.latest, new Date()));
       const health = aqNcarHealth_(aqLatestNcarObservation_(), new Date());
       aggregate.status = health.status;
       aggregate.message = health.message;
@@ -182,4 +186,10 @@ function aqArchiveNcarRaw_(dateText, bytes) {
   if (existing.hasNext()) return existing.next().getId();
   const blob = Utilities.newBlob(bytes, 'application/x-netcdf', name.slice(0, -3));
   return folder.createFile(Utilities.gzip(blob).setName(name)).getId();
+}
+
+function aqNcarMasterEnd_(fileDate, latest, now) {
+  // Refresh missing/present flags after the newest published day, including existing indoor rows.
+  const yesterday = aqAddLocalDays_(aqUtcIso_(now).slice(0, 10), -1);
+  return fileDate >= yesterday ? aqUtcIso_(now) : latest;
 }

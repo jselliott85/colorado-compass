@@ -208,7 +208,7 @@ outdoor AQ; Carriage Hills = paused/manual or provisional nearby comparator; US-
 regional forest-atmosphere research comparator awaiting current-data access.
 
 
-## NCAR Foothills — verified archive; deployment deferred pending interval semantics
+## NCAR Foothills — source verification (2026-10-14)
 
 Investigation on **2026-10-14**, following the NCAR link supplied by the owner from Sean Burns:
 
@@ -265,7 +265,7 @@ Across the tested window, temperature ranged 8.1–31.69 degC, RH 10.85–98.62%
 comparison against local Tempest exports for September 20–25 showed plausible broad temperature/RH
 changes with site differences. This is a preliminary validation, not a scientific association test.
 
-**Why no integration/deployment yet:** NetCDF variables have no `time_bounds` or `cell_methods`
+**Limitations identified during source verification:** NetCDF variables have no `time_bounds` or `cell_methods`
 defining whether the average is start-, center-, or end-labeled. The linked gust description refers
 to older Coastal hardware while the station page names Vaisala WXT510; the current gust averaging
 and peak reset interval are not confidently verified. `rain_accum` dropped from about 73.2 mm to zero
@@ -284,7 +284,7 @@ HDF5 decoder to Apps Script), UTC upserts, native raw retention, the requested
 coverage, and publication-aware health monitoring. Keep the existing six-hour cadence and refresh
 recent published UTC days. Only compute interval precipitation for adjacent valid counter samples
 with a verified convention; leave resets/gaps blank. Validate DST and interval edges before marking
-production-ready. No NCAR sheet, source status row, trigger or deployed collector has been created.
+production-ready. At that verification stage, no NCAR sheet or collector had been created; the rollout below supersedes that status.
 
 
 ### NCAR provisional implementation
@@ -338,7 +338,7 @@ python3 -m venv /tmp/ncar-venv
 All local outputs default to ignored `tmp/ncar-foothills/`. For a cached verification run, supply
 `--offline --cache-dir tmp/ncar-foothills-verification`. Nothing is published without `--publish`.
 
-Activation steps, not yet performed:
+Deployment and operation:
 
 1. Push the reviewed source to the **existing** bound Apps Script project and update its existing
    web-app deployment, preserving the current intake URL and Dyson settings.
@@ -350,10 +350,33 @@ Activation steps, not yet performed:
    UTC date. Existing `DYSON_INGEST_URL` and `DYSON_INGEST_SECRET` repository secrets are reused.
 4. Verify acknowledgement counts, new source/native/master rows, Schema/README caveats, UTC/DST,
    raw archive and Source_Status in the same private workbook. Verify the existing Dyson intake.
-5. Enable a six-hour `37 */6 * * *` cron only after that live check. Each scheduled run refreshes
+5. The six-hour `37 */6 * * *` cron is enabled after the successful live check. Each scheduled run refreshes
    the three most recent completed UTC dates; do not request an unpublished current-day file.
 
-The workflow is manual-only and gated off unless the repository variable is true; no live NCAR
-collection or six-hour NCAR schedule has been enabled. The public-repository Actions inactivity
-limitation documented above also applies when this schedule is enabled. This source is provisional,
+The workflow is gated by repository variable `NCAR_FOOTHILLS_ENABLED=true`. The public-repository
+Actions inactivity limitation documented above applies to its schedule. This source is provisional,
 not a research-quality reference, and no analytical conclusions are encoded in collection.
+
+
+### Live rollout — 2026-10-14
+
+The existing Apps Script web-app deployment was updated in place (version 5), preserving the same
+intake URL and existing source credentials. NCAR is enabled as a provisional regional comparator;
+set private Script Property `NCAR_FOOTHILLS_ENABLED=false` to pause intake and repository variable
+of the same name to `false` to skip its GitHub job. Carriage Hills remains disabled; NR1 remains
+awaiting separate five-minute-data guidance from Sean.
+
+The manual NCAR backfill uses the existing private GitHub secrets, with no station account/key.
+A fresh Dyson collection against the updated intake succeeded. The live source/master readbacks
+confirmed numeric readings, source attribution/caveats, local MDT timestamps and explicit partial
+coverage/missing flags, including the September 24 gap. Raw revisions are stored in private Drive.
+The successful 24-file backfill (September 20–October 13 UTC archives) populated 6,833 unique
+native observations and 2,280 unique quarter-hour records, beginning September 20 at midnight MDT.
+All 24 raw files are privately archived. Missing intervals remain absent from the source table and
+explicitly marked missing in Master; current unpublished intervals have zero coverage and blank
+weather values. Interval rainfall remains blank, with native cumulative counters retained.
+
+The six-hour schedule (`37 */6 * * *`, UTC) is enabled, refreshing the last three completed UTC
+dates. The first full backfill and fresh Dyson compatibility run both succeeded; scheduled runs
+will provide ongoing operational validation. NCAR remains provisional, with source-health and
+36-hour staleness monitoring enabled.
