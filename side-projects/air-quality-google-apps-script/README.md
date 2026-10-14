@@ -115,3 +115,94 @@ npm run lint
 ```
 
 The tests exercise DST-aware timestamps, Dyson pollutant preservation, Tempest aggregation and coverage, CDPHE regional metadata, token redaction, and the actual locally validated source fixtures.
+
+## Carriage Hills pilot — paused, NOT activated
+
+KCOBOULD877 (BMFPD Station 3 / Carriage Hills, 7,300 ft) has an optional JSON-history collector.
+Integration work is paused at the owner's request. The local prototype is retained for reference;
+it has not been pushed to Apps Script or enabled. No live pilot has started. The owner currently has neither a WU account nor a contributing WU
+station. Do not assume that creating an account grants a contributor key or third-party history
+rights. First establish a permitted access route; no website-embedded client key is allowed.
+
+Before deployment/activation, an account-issued key must successfully retrieve nonempty observations
+for **KCOBOULD877** from `/v2/pws/history/all` (not just current weather or the owner's station).
+Verify the returned station ID, epoch/UTC agreement, local date and quarter-hour cadence, and confirm
+that the account's terms permit this third-party station use. Only then privately configure
+`WU_API_KEY`, `WU_CARRIAGE_ACCESS_CONFIRMED=true` and `CARRIAGE_HILLS_ENABLED=true` in Script Properties.
+The access-confirmation property records a manual prerequisite; it is not an automated entitlement
+check. Reverify when changing credentials. A failed/empty credential test must not activate collection.
+Do not create an account or register a fictitious station just to obtain credentials.
+
+The prototype appends master columns without shifting existing data and creates
+`Carriage_Hills_15min`. It fetches today and the previous two **America/Denver** dates on the existing
+six-hour collector, with exact UTC/epoch timestamp upserts. Missing fields remain blank, absent
+quarters remain absent, and unexpected timestamp/cadence changes fail instead of moving readings.
+Raw JSON uses the existing private gzip archive when `KEEP_RAW=true`.
+
+Master fields are prefixed `carriage_`; Tempest is never overwritten. Speed/gust are provisional.
+Direction is retained verbatim, including 360, but is untrusted. Pressure is the midpoint of the
+reported bounds (or the available bound), likely sea-level pressure; raw bounds remain in the archive.
+Cumulative precipitation is retained without summation or differencing across gaps/resets.
+`carriage_present` indicates a source record, not that every field is populated or trustworthy.
+
+`Source_Status`/`Health_Log` report disabled, error, stale or success. The health message includes
+`stale=true/false` and observation age; missing observations or age over 12 hours are stale.
+This is evaluated at collector runs; inspect last-attempt timestamps to detect a stopped scheduler.
+Pilot failures do not fail the other collectors. First nonempty ingestion records
+`CARRIAGE_PILOT_STARTED_UTC`; review is no earlier than 14 days later and promotion is always manual.
+
+Review API reliability, field completeness, 360-degree frequency, precipitation resets and winter
+coverage. After an actual Tempest relocation, manually record the relocation in Events and validate
+its wind before enabling a separate Tempest wind collector change: the existing Tempest collector
+still excludes wind. Then compare matched-time speed/gust and inspect evening VOC associations
+without interpreting association as causation. This prototype alone cannot perform that wind comparison.
+
+
+## US-NR1 research comparator — awaiting administrator response
+
+**2026-10-14:** The owner contacted Sean Burns, the US-NR1 station administrator, to ask about
+access to current station data. A response is pending. No reply, access permission, credentials,
+or current feed has been received or verified, and no NR1 integration has been implemented or deployed.
+
+US-NR1 is Niwot Ridge Forest (LTER NWT1), at approximately 40.0329, -105.5470 and 3,050 m
+(about 10,000 ft). It is farther west and roughly 2,700 ft higher than the home, in a different
+subalpine ecosystem. Its intended role is a regional research comparator for forest-atmosphere
+processes, never a local weather proxy or substitute for Tempest. Wind provides broad mountain
+context, not the flow direction at the house. Associations with Dyson VOC would not establish
+causation, forest BVOC exposure, or identical conditions at the two locations.
+
+Read-only verification on 2026-10-14 established:
+
+- Official public CU source: <https://urquell.colorado.edu/data_ameriflux/>.
+- Versioned ASCII climate/flux files and quality flags download without credentials or browser
+  automation from <https://urquell.colorado.edu/data_ameriflux/data_30min/>. A repeated flux-file
+  download returned identical content.
+- The latest published climate and flux files cover 2025, version `2026.04.24`; each has 17,520
+  half-hour rows. There is no verified overlap with the home dataset starting in September 2026.
+- Although the overview describes daily updates to five-minute data, the public `data_5min/`
+  listing exposes only five files from 2010–2014. The downloaded `nwt.140601.nc` internally
+  identifies June 2014. A current public feed remains unverified.
+- The AmeriFlux site record also lists the FLUXNET release through 2025:
+  <https://ameriflux.lbl.gov/sites/siteinfo/US-NR1>.
+
+Prioritize `ustar_21m` (m/s), `z_L_21m` (dimensionless stability parameter), `Qh_21m` and
+`Qe_21m` (sensible/latent heat flux, W/m²), and `Rnet_25m_REBS` / `Rsw_in_25m_KZ` (net/incoming
+shortwave radiation, W/m²). Climate files also define temperature, RH, dew point, wind, pressure
+(kPa, convert to hPa by multiplying by 10), soil temperature and moisture. Measurement heights
+must remain explicit. The precipitation series uses nearby USCRN measurements after 2011.
+
+Timestamps are **fixed MST (UTC−7), centered on the 30-minute averaging interval**, not Denver
+civil time. Missing values include `NaN`. Separate flags identify measured, modeled, interpolated,
+C1-station, alternate-sensor, and diurnal-average values; do not treat every numeric cell as an
+independent measured observation or strip its provenance. A future 15-minute master join must
+retain the native 30-minute interval and quality flags, must not manufacture quarter-hour
+measurements, and must not duplicate precipitation amounts.
+
+Before resuming implementation, verify any feed Sean supplies for current coverage, repeatable
+access, latency, timestamp/interval conventions, missing values, units, sensor heights and quality
+flags. Stop and report if it requires credentials/payment or lacks adequate documentation. No
+six-hour NR1 polling, backfill, source table, or master fields have been activated.
+
+Source roles remain: Dyson = indoor AQ; Tempest = primary hyperlocal weather; CDPHE = regional
+outdoor AQ; Carriage Hills = paused/manual or provisional nearby comparator; US-NR1 = proposed
+regional forest-atmosphere research comparator awaiting current-data access.

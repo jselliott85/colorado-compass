@@ -3,7 +3,7 @@
  * Tempest credentials and the Dyson intake secret live in Script Properties.
  */
 
-const AQ_SCHEMA_VERSION = '1.0.0';
+const AQ_SCHEMA_VERSION = '1.1.0';
 const AQ_DEFAULT_TIME_ZONE = 'America/Denver';
 const AQ_INITIAL_DATE = '2026-09-20';
 const AQ_BIN_MINUTES = 15;
@@ -19,6 +19,7 @@ const AQ_SHEETS = Object.freeze({
   DYSON: 'Dyson_15min',
   TEMPEST: 'Tempest_15min',
   REGIONAL: 'Regional_AQ_15min',
+  CARRIAGE: 'Carriage_Hills_15min',
   EVENTS: 'Events',
   STATUS: 'Source_Status',
   HEALTH: 'Health_Log',
@@ -81,7 +82,18 @@ const AQ_MASTER_HEADERS = Object.freeze([
   'regional_source_hour_ending_mst',
   'regional_source_resolution_minutes',
   'missing_sources',
-  'schema_version'
+  'schema_version',
+  'carriage_wind_speed_kmh',
+  'carriage_wind_gust_kmh',
+  'carriage_wind_direction_deg',
+  'carriage_temperature_c',
+  'carriage_relative_humidity_pct',
+  'carriage_dew_point_c',
+  'carriage_pressure_hpa',
+  'carriage_precip_rate_mm_h',
+  'carriage_precip_total_mm',
+  'carriage_qc_status',
+  'carriage_present'
 ]);
 
 const AQ_DYSON_HEADERS = Object.freeze([
@@ -109,6 +121,13 @@ const AQ_REGIONAL_HEADERS = Object.freeze([
   'ozone_station', 'ozone_station_aqs_id', 'comparator_scope',
   'ingested_at_utc'
 ]);
+
+const AQ_CARRIAGE_FIELDS = Object.freeze(['wind_speed_kmh', 'wind_gust_kmh', 'wind_direction_deg', 'temperature_c', 'relative_humidity_pct', 'dew_point_c', 'pressure_hpa', 'precip_rate_mm_h', 'precip_total_mm', 'qc_status'] );
+const AQ_CARRIAGE_HEADERS = Object.freeze([
+  'timestamp_utc', 'timestamp_local', 'station_id', 'epoch',
+].concat(AQ_CARRIAGE_FIELDS, [
+  'wind_direction_trust', 'pressure_basis', 'precip_total_semantics', 'ingested_at_utc'
+]));
 
 const AQ_EVENT_HEADERS = Object.freeze([
   'event_id', 'timestamp_local', 'timestamp_utc', 'time_precision',
@@ -159,6 +178,8 @@ function aqConfig_() {
     keepRaw: String(properties.KEEP_RAW || 'true').toLowerCase() !== 'false',
     alertEmail: properties.ALERT_EMAIL || '',
     dysonIngestSecret: properties.DYSON_INGEST_SECRET || '',
+    carriageEnabled: properties.CARRIAGE_HILLS_ENABLED === 'true',
+    wuApiKey: properties.WU_API_KEY || '',
     tempestToken: properties.TEMPEST_TOKEN || '',
     tempestStationId: properties.TEMPEST_STATION_ID || '',
     tempestDeviceId: properties.TEMPEST_DEVICE_ID || ''

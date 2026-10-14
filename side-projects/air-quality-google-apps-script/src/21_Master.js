@@ -9,6 +9,7 @@ function aqRebuildMaster_(startUtc, endUtc) {
   const dyson = aqIndexRows_(aqReadRowsBetween_(AQ_SHEETS.DYSON, AQ_DYSON_HEADERS, first, last));
   const tempest = aqIndexRows_(aqReadRowsBetween_(AQ_SHEETS.TEMPEST, AQ_TEMPEST_HEADERS, first, last));
   const regional = aqIndexRows_(aqReadRowsBetween_(AQ_SHEETS.REGIONAL, AQ_REGIONAL_HEADERS, first, last));
+  const carriage = aqIndexRows_(aqReadRowsBetween_(AQ_SHEETS.CARRIAGE, AQ_CARRIAGE_HEADERS, first, last));
   const rows = [];
   for (let instant = start.getTime(); instant <= end.getTime(); instant += AQ_BIN_MINUTES * 60000) {
     const timestamp = new Date(instant);
@@ -20,11 +21,13 @@ function aqRebuildMaster_(startUtc, endUtc) {
     const t = tempest[key] || null;
     const sourceRegional = regional[key] || null;
     const r = aqRegionalHasObservation_(sourceRegional) ? sourceRegional : null;
+    const c = carriage[key] || null;
     const missing = [];
+    if (config.carriageEnabled && !c) missing.push('carriage_hills');
     if (!d) missing.push('dyson');
     if (!t) missing.push('tempest');
     if (!r) missing.push('regional_aq');
-    rows.push({
+    const row = {
       timestamp_utc: key,
       timestamp_local: local,
       local_date: localParts ? localParts[1] : aqLocalDate_(timestamp, config.timeZone),
@@ -79,8 +82,11 @@ function aqRebuildMaster_(startUtc, endUtc) {
       regional_source_hour_ending_mst: r && r.source_hour_ending_mst,
       regional_source_resolution_minutes: r && r.source_resolution_minutes,
       missing_sources: missing.join(','),
-      schema_version: AQ_SCHEMA_VERSION
-    });
+      schema_version: AQ_SCHEMA_VERSION,
+      carriage_present: Boolean(c)
+    };
+    AQ_CARRIAGE_FIELDS.forEach(function(field) { row['carriage_' + field] = c ? c[field] : null; });
+    rows.push(row);
   }
   return aqUpsertRows_(AQ_SHEETS.MASTER, AQ_MASTER_HEADERS, rows);
 }

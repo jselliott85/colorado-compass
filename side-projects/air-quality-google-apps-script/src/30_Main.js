@@ -67,6 +67,9 @@ function aqRunCollection_(extendedBackfill) {
     });
     affectedStart = aqEarliest_([affectedStart, regional.earliest]);
 
+    const carriage = aqRunCarriagePilot_(runId, runStarted);
+    affectedStart = aqEarliest_([affectedStart, carriage.earliest]);
+
     if (affectedStart) {
       aqRunSource_(runId, 'master', function() {
         return aqRebuildMaster_(affectedStart, aqUtcIso_(new Date()));
@@ -119,6 +122,8 @@ function aqRunSource_(runId, source, callback) {
   let message = 'OK';
   try {
     result = callback() || result;
+    status = result.status || 'success';
+    message = result.message || 'OK';
     properties.setProperties({
       [statusPrefix + 'LAST_SUCCESS_UTC']: aqUtcIso_(new Date()),
       [statusPrefix + 'CONSECUTIVE_FAILURES']: '0'
@@ -127,6 +132,9 @@ function aqRunSource_(runId, source, callback) {
     status = 'error';
     category = aqErrorCategory_(error);
     message = aqSafeMessage_(error);
+    if (source === 'carriage_hills') {
+      message += ' ' + aqCarriageHealth_(aqLatestTimestamp_(AQ_SHEETS.CARRIAGE), new Date()).message;
+    }
     const failures = Number(properties.getProperty(statusPrefix + 'CONSECUTIVE_FAILURES') || 0) + 1;
     properties.setProperty(statusPrefix + 'CONSECUTIVE_FAILURES', String(failures));
   }

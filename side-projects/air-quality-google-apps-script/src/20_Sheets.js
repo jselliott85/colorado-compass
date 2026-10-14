@@ -10,7 +10,12 @@ function aqEnsureSheet_(name, headers) {
     }
     const current = sheet.getRange(1, 1, 1, headers.length).getDisplayValues()[0];
     const differs = headers.some(function(header, index) { return current[index] !== header; });
-    if (differs && sheet.getLastRow() > 1) {
+    // Explicit append-only migration: preserve every existing column and cell.
+    const legacyMasterLength = headers.indexOf('carriage_wind_speed_kmh');
+    const carriageMigration = name === AQ_SHEETS.MASTER && legacyMasterLength > 0 &&
+      current.slice(0, legacyMasterLength).every(function(value, index) { return value === headers[index]; }) &&
+      current.slice(legacyMasterLength).every(function(value) { return value === ''; });
+    if (differs && sheet.getLastRow() > 1 && !carriageMigration) {
       throw new Error('Schema mismatch in ' + name + '; refusing to overwrite populated data.');
     }
     if (differs) sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
@@ -34,6 +39,7 @@ function aqInitializeSheets_() {
   aqEnsureSheet_(AQ_SHEETS.DYSON, AQ_DYSON_HEADERS);
   aqEnsureSheet_(AQ_SHEETS.TEMPEST, AQ_TEMPEST_HEADERS);
   aqEnsureSheet_(AQ_SHEETS.REGIONAL, AQ_REGIONAL_HEADERS);
+  aqEnsureSheet_(AQ_SHEETS.CARRIAGE, AQ_CARRIAGE_HEADERS);
   aqEnsureSheet_(AQ_SHEETS.EVENTS, AQ_EVENT_HEADERS);
   aqEnsureSheet_(AQ_SHEETS.STATUS, AQ_STATUS_HEADERS);
   aqEnsureSheet_(AQ_SHEETS.HEALTH, AQ_HEALTH_HEADERS);
@@ -162,6 +168,8 @@ function aqWriteReadme_() {
     ['dyson_source', 'MyDyson read-only environmental history from a GitHub-hosted collector; rolling seven calendar dates; refreshed with overlap and timestamp upserts.'],
     ['tempest_source', 'On-site Tempest native one-minute history aggregated to 15-minute UTC bins. Wind is intentionally excluded because station siting makes it unreliable.'],
     ['regional_aq_source', 'CDPHE preliminary regional comparator data. PM2.5/PM10: Boulder-CU/Athens (AQS 080131001, about 5,322 ft). Ozone: Boulder Reservoir (AQS 080130014, about 5,203 ft).'],
+    ['carriage_hills_pilot', 'KCOBOULD877 / Carriage Hills: optional provisional comparator and labeled fallback only; never replaces Tempest. Wind speed/gust provisional; direction untrusted (repeated 360 degrees). Pressure likely sea-level, distinct from Tempest station pressure. Precipitation total is the source accumulation, never summed. Review after at least 14 days of live collection; no automatic promotion.'],
+    ['carriage_hills_analysis', 'After a manually recorded Tempest relocation, evaluate wind speed/gust agreement, evening VOC associations and winter coverage. Tempest wind remains excluded pending a separate validated collector change; no causal conclusions from association.'],
     ['regional_caveat', 'Regional monitors are not measurements at the home. The home environment is roughly 2,000 ft higher and west in the foothills.'],
     ['events', 'Events are manually recorded interventions/context only. No inferred occupancy, window, traffic, vegetation, or smoke events are added.'],
     ['raw_archive', 'Private compressed Drive files preserve source responses when KEEP_RAW=true.'],
@@ -193,6 +201,25 @@ function aqSchemaDescription_(table, column) {
     time_precision: ['text', '', 'Precision qualifier such as approximate or exact.', 'required'],
     schema_version: ['text', '', 'Schema version used to write the row.', 'required']
   };
+  const carriageColumn = table === AQ_SHEETS.CARRIAGE || column.indexOf('carriage_') === 0;
+  const carriageField = column.replace(/^carriage_/, '');
+  if (carriageColumn) {
+    const metadata = {
+      wind_speed_kmh: ['km/h', 'WU windspeedAvg; provisional comparison value; interval support unverified.'],
+      wind_gust_kmh: ['km/h', 'WU windgustHigh; provisional; capture of all interval gusts unverified.'],
+      wind_direction_deg: ['degree', 'WU winddirAvg retained verbatim; UNTRUSTED, including repeated 360 values; exclude from directional conclusions.'],
+      temperature_c: ['C', 'WU tempAvg; nearby comparator only.'],
+      relative_humidity_pct: ['percent', 'WU humidityAvg.'],
+      dew_point_c: ['C', 'WU dewptAvg.'],
+      pressure_hpa: ['hPa', 'WU midpoint of pressureMin/Max (or available bound); likely sea-level pressure, not Tempest station pressure. Raw bounds archived.'],
+      precip_rate_mm_h: ['mm/h', 'WU source precipitation rate.'],
+      precip_total_mm: ['mm', 'WU cumulative precipitation total; source local-day/reset semantics retained. Never sum totals or infer interval rain across gaps/resets.'],
+      qc_status: ['', 'WU numeric qcStatus retained; not a guarantee of sensor accuracy.']
+    };
+    if (metadata[carriageField]) return ['number', metadata[carriageField][0], metadata[carriageField][1], 'blank means missing; never interpolated'];
+    if (['wind_direction_trust', 'pressure_basis', 'precip_total_semantics', 'station_id'].indexOf(carriageField) >= 0) return ['text', '', carriageField.replace(/_/g, ' '), 'source metadata'];
+    if (carriageField === 'epoch') return ['number', 'Unix seconds', 'Exact source observation instant; UTC deduplication key, never local clock alone.', 'required'];
+  }
   if (definitions[column]) return definitions[column];
   let type = 'number';
   let unit = '';
@@ -224,6 +251,7 @@ function aqWriteSchema_() {
     [AQ_SHEETS.DYSON, AQ_DYSON_HEADERS, 'MyDyson'],
     [AQ_SHEETS.TEMPEST, AQ_TEMPEST_HEADERS, 'Tempest'],
     [AQ_SHEETS.REGIONAL, AQ_REGIONAL_HEADERS, 'CDPHE regional comparator'],
+    [AQ_SHEETS.CARRIAGE, AQ_CARRIAGE_HEADERS, 'WU KCOBOULD877 provisional pilot'],
     [AQ_SHEETS.EVENTS, AQ_EVENT_HEADERS, 'manual only'],
     [AQ_SHEETS.STATUS, AQ_STATUS_HEADERS, 'collector health']
   ];

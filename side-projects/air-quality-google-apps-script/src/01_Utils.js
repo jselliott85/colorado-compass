@@ -88,7 +88,7 @@ function aqSafeMessage_(error) {
   const raw = String(error && error.message ? error.message : error || 'Unknown error');
   return raw
     .replace(/Bearer\s+[A-Za-z0-9._~+\/-]+/gi, 'Bearer [REDACTED]')
-    .replace(/([?&](?:token|key|api_key|access_token)=)[^&\s]+/gi, '$1[REDACTED]')
+    .replace(/([?&](?:token|key|apikey|api_key|access_token)=)[^&\s]+/gi, '$1[REDACTED]')
     .replace(/[\r\n\t]+/g, ' ')
     .slice(0, 500);
 }

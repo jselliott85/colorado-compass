@@ -220,3 +220,57 @@ test('validated local source fixtures normalize with the hosted pipeline', { ski
   assert.equal(cdpheRows.length, 24);
   assert.ok(cdpheRows.some((row) => row.pm25_1h_ug_m3 !== null));
 });
+
+function carriageObservation(epoch, overrides = {}) {
+  return {
+    stationID: 'KCOBOULD877', epoch, obsTimeUtc: new Date(epoch * 1000).toISOString(),
+    tz: 'America/Denver', humidityAvg: null, winddirAvg: 360, qcStatus: -1,
+    metric: { windspeedAvg: 0, windgustHigh: 3.2, tempAvg: null, dewptAvg: null,
+      pressureMin: 1020, pressureMax: 1022, precipRate: 0, precipTotal: 12 }, ...overrides
+  };
+}
+
+test('Carriage normalization preserves gaps, nulls, cumulative resets, QC and untrusted north', () => {
+  const r = loadRuntime(['aqNormalizeCarriage_']);
+  const first = Date.parse('2026-10-13T06:00:00Z') / 1000;
+  const a = carriageObservation(first);
+  const b = carriageObservation(first + 1800, {metric: {...a.metric, precipTotal: 0}});
+  const rows = r.aqNormalizeCarriage_({observations: [a, b, a]}, '2026-10-13', new Date('2026-10-14T06:00:00Z'));
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0].wind_speed_kmh, 0);
+  assert.equal(rows[0].temperature_c, null);
+  assert.equal(rows[0].relative_humidity_pct, null);
+  assert.equal(rows[0].wind_direction_deg, 360);
+  assert.equal(rows[0].wind_direction_trust, 'untrusted');
+  assert.equal(rows[0].qc_status, -1);
+  assert.equal(rows[0].pressure_hpa, 1021);
+  assert.equal(rows[0].precip_total_mm, 12);
+  assert.equal(rows[1].precip_total_mm, 0);
+  assert.equal(rows[1].epoch - rows[0].epoch, 1800);
+});
+
+test('Carriage uses UTC for repeated DST hours and refuses wrong station/date/cadence', () => {
+  const r = loadRuntime(['aqNormalizeCarriage_']);
+  const a = carriageObservation(Date.parse('2024-11-03T07:00:00Z') / 1000);
+  const b = carriageObservation(a.epoch + 3600);
+  const now = new Date('2024-11-04T08:00:00Z');
+  const rows = r.aqNormalizeCarriage_({observations: [a,b]}, '2024-11-03', now);
+  assert.equal(rows.length, 2);
+  assert.match(rows[0].timestamp_local, /01:00:00-06:00$/);
+  assert.match(rows[1].timestamp_local, /01:00:00-07:00$/);
+  for (const bad of [{...a, stationID: 'OTHER'}, {...a, epoch: a.epoch + 60}, {...a, obsTimeUtc: b.obsTimeUtc}]) {
+    assert.throws(() => r.aqNormalizeCarriage_({observations: [bad]}, '2024-11-03', now));
+  }
+  assert.throws(() => r.aqNormalizeCarriage_({observations: [a]}, '2024-11-04', now));
+  assert.throws(() => r.aqNormalizeCarriage_({}, '2024-11-03', now));
+});
+
+test('Carriage history dates follow Denver and health distinguishes empty/stale observations', () => {
+  const r = loadRuntime(['aqCarriageDates_', 'aqCarriageHealth_', 'aqSafeMessage_']);
+  assert.equal(JSON.stringify(r.aqCarriageDates_(new Date('2026-10-14T05:00:00Z'))), JSON.stringify(['2026-10-11','2026-10-12','2026-10-13']));
+  const now = new Date('2026-10-14T18:00:00Z');
+  assert.equal(r.aqCarriageHealth_('', now).status, 'stale');
+  assert.equal(r.aqCarriageHealth_('2026-10-14T05:00:00Z', now).status, 'stale');
+  assert.equal(r.aqCarriageHealth_('2026-10-14T17:45:00Z', now).status, 'success');
+  assert.equal(r.aqSafeMessage_('https://api.weather.com/?apiKey=private-secret&date=20261013').includes('private-secret'), false);
+});
