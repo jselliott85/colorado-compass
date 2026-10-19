@@ -110,7 +110,8 @@ const AQ_MASTER_HEADERS = Object.freeze([
   'ncar_foothills_peak_gust_ms',
   'ncar_foothills_precipitation_mm',
   'nr1_present', 'nr1_observation_count', 'nr1_coverage_fraction',
-  'nr1_air_temperature_c', 'nr1_sonic_temperature_c', 'nr1_vertical_velocity_ms'
+  'nr1_air_temperature_c', 'nr1_sonic_temperature_c', 'nr1_vertical_velocity_ms',
+  'nest_present', 'nest_zone_count', 'nest_zones_json'
 ]);
 
 const AQ_DYSON_HEADERS = Object.freeze([

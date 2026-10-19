@@ -375,3 +375,15 @@ The six-hour schedule (`37 */6 * * *`, UTC) is enabled, refreshing the last thre
 dates. The first full backfill and fresh Dyson compatibility run both succeeded; scheduled runs
 will provide ongoing operational validation. NCAR remains provisional, with source-health and
 36-hour staleness monitoring enabled.
+
+## Nest thermostat observations
+
+The read-only per-zone Nest worker, canonical timestamp join, usage monitoring and
+historical Takeout importer are implemented and deployed. Live source/aggregate/Master
+readback was verified. Existing collectors, scopes and schedules remain in place.
+
+[Nest setup, schema, coverage and health](NEST_SETUP.md) documents authorization,
+private storage, event continuity, cost-monitoring limits and offline recovery.
+`duration_basis` distinguishes exported interval counters from live state persistence.
+Missing intervals remain missing. Private observations and run-specific audit results
+stay outside Git.

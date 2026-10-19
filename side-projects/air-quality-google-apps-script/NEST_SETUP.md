@@ -1,0 +1,137 @@
+# Google Nest read-only observation integration
+
+The integration supports live read-only collection and separately identified historical Takeout intervals. Runtime validation and source-specific import results belong in the private dataset and local operator audit, not this repository.
+
+## Architecture and boundaries
+
+The existing bound Apps Script, six-hour source collectors, signed Dyson/NCAR intake, historical data and Events remain in place. The bound join appends only `nest_present`, `nest_zone_count` and `nest_zones_json` to Master. Each JSON array item carries the fields of one zone; no thermostat runtimes are pooled. `Nest_15min` is the rectangular analytical source, keyed by `(UTC bin, zone)`.
+
+A separate, owner-only Apps Script worker runs roughly every minute to pull an **owned Google Cloud Pub/Sub subscription**, and reconciles SDM device snapshots every five minutes. It publishes completed UTC quarters. Raw events, snapshots, discovery and continuity checkpoints are gzip files in a private Drive archive organized by ingestion month. Events are acknowledged only after raw archival and normalized-ledger persistence. No GitHub cron or local Mac uptime is needed. There is no Cloud Run server, paid scheduler, or inbound public Pub/Sub endpoint.
+
+The worker uses its own Script Properties and OAuth grants. It does not change the existing bound project's scopes, identity or authorization. SDM scope is Google's `sdm.service`; Google does not provide a separate read-only SDM scope. The implementation restricts SDM transport to GET devices.list, with no executeCommand path. Other POST requests are OAuth exchanges and Pub/Sub pull/acknowledge operations, never equipment commands. Private setup deployment must have `access=MYSELF`, not anonymous/public access.
+
+Configure one stable alias per HVAC zone. Separate Nest Temperature Sensors are not available through Device Access; do not invent remote sensor readings or treat them as extra HVAC zones. Inspect actual traits during discovery, including Eco settings and absent standard setpoints. Eco mode/setpoints are recorded separately.
+
+## Fields and time semantics
+
+`Nest_Observations` is a rolling normalized ledger (three days), keyed by observation ID. It retains SDM event IDs, source event time, snapshot **read time** (not device measurement time), device resource identity, event/snapshot kind, exact traits JSON and ingestion time. Full history remains in Drive. The registration date, Nest app history and local screenshots do not provide historical HVAC runtime for this collector.
+
+`Nest_Collection_Health` retains recent worker start/end times, queue-drained status, snapshot success and run outcome. A script-lock miss produces no success checkpoint; missed heartbeats remain detectable. Raw checkpoints remain archived. Collection start is persisted as the actual first successful collection-run start, not a fabricated earlier runtime history.
+
+`Nest_15min` has one row per device/zone per completed UTC quarter:
+
+| Fields | Meaning |
+| --- | --- |
+| `bin_zone_key`, `timestamp_utc`, `timestamp_local` | Stable UTC quarter/zone key; America/Denver uses actual DST offset |
+| `device_id`, `zone_id` | Authorized SDM device resource and stable configured zone alias |
+| `hvac_status` | Last reported HEATING, COOLING or OFF; **not** thermostat mode |
+| `thermostat_mode`, `eco_mode` | Standard HEAT/COOL/HEATCOOL/OFF mode and separate Eco mode |
+| `fan_timer_state`, `fan_timer_expiration_utc` | SDM fan timer ON/OFF and timeout where exposed; **not physical blower status or measured blower runtime** |
+| `temperature_c`, `relative_humidity_pct` | Last fresh SDM thermostat observations, not remote room sensors |
+| `heat_setpoint_c`, `cool_setpoint_c` | Standard setpoints, null if trait fields absent |
+| `eco_heat_setpoint_c`, `eco_cool_setpoint_c` | Separately reported Eco limits; never substituted silently for standard setpoints |
+| `connectivity`, `latest_observation_utc` | Last reported device connectivity and source observation time |
+| `heating_minutes`, `cooling_minutes`, `off_minutes` | Observed-state persistence within known stream coverage only; null if no supported duration |
+| `known_duration_minutes`, `unknown_duration_minutes` | Known classified duration and remaining duration, summing to 15 |
+| `known_duration_coverage_fraction` | Known minutes / 15; evaluate before comparing duration to VOC/PM |
+| `observation_count`, `duration_basis`, `ingested_at_utc` | Deduplicated observations in bin, provisional event/polling basis and materialization timestamp |
+
+A healthy window requires adjacent successful, queue-drained runs no more than 180 seconds apart. Each window requires a fresh in-window state anchor. HVAC classification additionally requires reported ONLINE connectivity. Errors, backlog, OFFLINE reports, heartbeat gaps, missing device snapshots, unavailable traits and contradictory simultaneous HVAC states create unknown durations until a new valid anchor. A matching snapshot after an outage does not establish that no short cycles occurred during the outage.
+
+Partial trait updates are replayed in source time; duplicate event IDs are idempotent. Conflicting duplicate contents fail rather than overwrite history arbitrarily. Same-time contradictory HVAC states remain unknown. No linear interpolation is used. Event-derived persistence is explicitly **provisional**, subject to asynchronous delivery and later corrections; it is not an independent measurement of equipment operation. Snapshot-only mode intentionally produces no runtime minutes, even between matching snapshots.
+
+Scalar fields use the last reported state, with a ten-minute freshness bound. Do not infer actual operation from a mode, setpoint, fan timer or an unavailable field. A bin may have a source row but zero known-duration coverage.
+
+Normal replay covers the most recent 48 hours. Events older than that are archived and acknowledged, trigger a degraded checkpoint and require deliberate archive replay; they are not silently applied to recent history. Recent out-of-order events revise affected bins. Three days of raw-normalized observations/checkpoints are retained in Sheets to bound minute-worker reads. Yearly archival of `Nest_15min` follows the dataset's broader workbook-capacity policy.
+
+The worker patches only appended Nest columns on **existing** Master UTC keys. It does not append Master keys concurrently with the bound writer or reconstruct historical sources. New Master keys appear through the existing collector cycle (up to six hours); `Nest_15min` is fresher in the meantime. A normal bound Master rebuild reads Nest source rows by UTC and preserves zones. Pre-collection values remain missing unless a separately validated historical source supports them.
+
+## Google setup sequence
+
+1. Use the personal Google account linked to Nest for Device Access registration. Registration is a one-time, non-refundable US$5 per account; Workspace accounts cannot register. Keep the existing Sheet/worker under its existing owner account.
+2. Create/reuse a separate Cloud project; enable Smart Device Management and Pub/Sub APIs. Configure External OAuth consent, add the Nest account as a test user for initial setup, and create a **Web application** client. This direct API collector is not an AI-agent OAuth client.
+3. Register exact redirect `http://localhost:8765/callback`; leave JavaScript origins empty. Download client JSON privately outside Git. Add its public client ID to the Device Access project.
+4. Set Google Auth Platform Audience to **In production** for ongoing collection. Tokens issued in Testing can expire after seven days; renew both grants after the change. This is unrelated to applying for commercial Nest development.
+5. Run `scripts/nest_authorize.py` using the local client JSON and Device Access project ID. It opens PCM, checks callback state and PKCE, exchanges tokens server-side and writes a mode-0600 local output without printing secrets. Use `--pubsub` for a separate ordinary Google OAuth grant limited to Pub/Sub.
+6. Create a dedicated owned topic/subscription and grant `group:sdm-publisher@googlegroups.com` Publisher on that topic. `scripts/nest_cloud_setup.py` currently prepares the dedicated project resources. Set the exact `projects/PROJECT/topics/TOPIC` resource in the Device Access Console and enable events. Never use the legacy Google-owned `sdm-prod` topic.
+7. Make an SDM devices.list call to finalize account linkage and initialize events. Inspect real traits; configure `NEST_ZONES_JSON` only after discovery. No setpoint/fan/HVAC command is required for verification—wait for naturally changing temperature/status events.
+8. Build a separate worker with `python scripts/build_nest_worker.py`. Give it its own private `.clasp.json` under ignored `tmp/nest-worker`; never overwrite the bound collector project with worker files. Push/deploy owner-only, verify the manifest, and open its private setup web app as its owner.
+9. The private setup JSON combines SDM/PubSub refresh grants, client ID/secret, Sheet ID, private archive-folder ID, subscription resource and zones map. Select that file **only on the owner-only setup page**, then Save. It is stored in the worker's Script Properties; it must never be pasted in chat, logged, committed, put in Sheet cells or exposed in a public web app. Retain only needed private local backups and clear any secret clipboard contents.
+10. Use **Verify observation (read only)**. Confirm a real row in `Nest_Observations`, a private raw archive, `Source_Status` success and queue-drained state. Only then use **Start collection** to install the worker's one-minute trigger. Check completed `Nest_15min` bins and the subsequent Master UTC join.
+
+Tokens refresh before expiry, with one 401 refresh/retry. Revoked grants surface as sanitized health failures. Recovery does not bridge the gap. Private setup files are never part of the worker's uploaded source tree or the Git commit.
+
+## Cost and operational health
+
+The US$5 registration is separate from cloud usage. Pub/Sub has a free allowance (Google currently documents 10 GB/month); one thermostat's traffic should be small, but billing is usage-based and not guaranteed zero. If billing is linked, configure a low budget alert; budget alerts are not spending caps. The worker uses existing Apps Script/Drive/Sheets services and quotas. Apps Script currently limits trigger runtime to 90 minutes/day for consumer accounts or six hours/day for Workspace; measure worker execution times before calling the minute cadence durable. Raw archives consume private Drive storage. No extra paid hosting has been deployed.
+
+Check `Source_Status` for source `nest`: last attempt/success, failures, latest snapshot timestamp and message. Last attempt older than five minutes is stale, even if an old success remains visible. The bound six-hour watchdog marks stale Nest status independently; it does not replace minute-by-minute timestamp checks. `Nest_Collection_Health` shows backlog/errors; known-duration coverage in `Nest_15min` shows analytical availability. Google Cloud's subscription backlog/oldest-unacked age and Apps Script execution failures/runtime quota provide independent checks.
+
+## Verification
+
+Unit tests cover HVAC/mode/fan separation; missing fields; UTC boundaries; Denver DST fold; duplicate/order invariance; conflicting events; partial coverage; OFFLINE intervals; errors/backlog; outage recovery; snapshots-only runtime suppression; token caching and 401 retry; and prohibition of equipment-command endpoints. Existing source regression tests remain in the suite. Production acceptance additionally requires real API/Sheet observations, natural Pub/Sub delivery, token refresh, trigger execution and preservation of every pre-existing Master column.
+
+Official references verified on 2026-10-19:
+
+- [Device Access registration](https://developers.google.com/nest/device-access/registration)
+- [Supported devices—temperature sensors excluded](https://developers.google.com/nest/device-access/supported-devices?hl=en)
+- [Thermostat traits and event semantics](https://developers.google.com/nest/device-access/api/thermostat)
+- [Account authorization](https://developers.google.com/nest/device-access/authorize)
+- [Owned Pub/Sub topic setup](https://developers.google.com/nest/device-access/subscribe-to-events)
+- [Events and service authentication](https://developers.google.com/nest/device-access/api/events)
+- [OAuth refresh-token lifetime](https://developers.google.com/identity/protocols/oauth2/)
+- [Apps Script quotas](https://developers.google.com/apps-script/guides/services/quotas)
+
+## Cost controls and usage monitoring (2026-10-19)
+
+Verify the project’s billing linkage during setup and record that state privately. Leave billing disabled when it is not needed. Billing linkage is not continuously checked by this worker, and the worker does not configure billing budgets or spend caps. If billing is linked later, create a project-scoped monthly alert budget (for example $1 with 10%, 50% and 100% thresholds) covering all services and confirm email delivery. Alerts-only budgets do not stop spending. Check current eligible services before relying on a native spend cap. Do not add BigQuery billing exports, Cloud Run or a paid monitoring stack for this one-device workload.
+
+`Nest_Usage` stores one row per UTC day: worker runs, successful pull calls, received messages, snapshot requests, delivery-size proxy, newly archived compressed bytes/files and accumulated worker runtime. Counters begin at monitoring deployment and exclude earlier use, other subscriptions, publisher traffic, other projects and external collectors. The delivery proxy includes request-size allowance and JSON overhead, not Google's billed-byte calculation. Runtime excludes the final monitoring write itself. Failed/timed-out calls may not appear in successful-call counters. This is operational telemetry, not an invoice.
+
+Daily delivery proxy of 50 MiB, newly archived data of 10 MiB or accumulated worker runtime of 180 minutes flags `review_usage` in Nest_Usage and `degraded` in Source_Status. Collection continues. These are review thresholds, not monetary caps. The independent bound watchdog can email the configured LHL owner about usage or collection problems. Read last_attempt_utc for stopped workers because a stopped worker cannot report its own failure. The existing six-hour bound watchdog supplies an independent stale check.
+
+Pull cadence stays at one minute, max three batches of 100 per run. Reconciliation snapshots remain five minutes, plus recovery snapshots. This preserves state-change events and limits API work without trading away short-cycle evidence. Health checkpoints are archived in quarter-hour batches (about 96 files/day instead of 1,440), preserving each minute's checkpoint. Raw device observations remain archived. Drive storage grows over time and consumes the existing account's storage allowance. No automatic paid storage upgrade is configured.
+
+Official pricing reviewed: https://cloud.google.com/pubsub/pricing . Basic delivery throughput has a 10 GiB/month billing-account free allowance, but cross-region transfer and backlog older than one day can incur separate charges if billing is enabled. Topic retention and acknowledged-message retention should stay off. Keep the seven-day unacknowledged recovery window rather than silently sacrificing recoverability to avoid a tiny potential backlog storage charge.
+
+## Historical recovery and Takeout imports
+
+`scripts/nest_recover_archive.js` normalizes timestamped raw discovery, snapshot and state-event evidence. Administrative events do not establish device state. A bare file modification time does not establish an observation timestamp. Repeat imports use stable identities; conflicting contents are rejected. Preserve the original archive and record source identities, retrieval dates, exclusions and outcomes in the private `Nest_Recovery_Log`.
+
+`scripts/nest_takeout_import.py` is an offline validator/normalizer for `HvacRuntime.jsonl`. It accepts JSON lines or CSV-quoted JSON lines and requires explicit UTC interval bounds aligned to 900 seconds. Heating/cooling counters must be finite, nonnegative and sum to no more than the interval. Mode counters must cover exactly 900 seconds, with no unvalidated auxiliary-stage overlap, before runtime is supported. Anomalous coverage remains unknown; counters are never clipped. The counter scale is checked against the source's 900-second intervals before converting seconds to minutes.
+
+Keep source intervals in `Nest_Takeout_15min`, including original counters, source member, ZIP SHA-256, retrieval timestamp and validation outcome. Canonical rows use `duration_basis=takeout_reported_interval_seconds`. Heating/cooling minutes are direct exported counters divided by 60; `off_minutes` is the remaining interval with neither heating nor cooling reported, and says nothing about blower operation. Exported `fan_time` remains separate from SDM fan timer state and must not be called independently measured physical blower runtime. Point-in-time HVAC, mode, fan and sensor state is not fabricated from interval summaries. Unverified source sensor/target values stay in the source table.
+
+Import only intervals overlapping the canonical dataset unless an earlier dataset extension is explicitly requested. Retain older evidence in its private original archive. Do not distribute daily totals across quarters, derive runtime from temperatures/schedules/setpoints, fill missing quarters, or extend the first state backwards. Keep live SDM data when historical intervals overlap it until the sources are explicitly reconciled.
+
+Before bulk insertion, pause the separate worker with a bounded maintenance gate, allow in-flight writes to finish, preserve live rows, and match Master by UTC key. Patch only the appended Nest columns. Remove the gate immediately after import. Events remain queued, but unsupported continuity must remain unknown. Verify all imported keys and durations, duplicate-free repeat processing, unaffected non-Nest Master fields and resumed scheduled success.
+
+Example offline preparation (all paths and IDs are operator-supplied):
+
+```sh
+python3 scripts/nest_takeout_import.py --zip /private/path/export.zip \
+  --start 2026-01-01T00:00:00Z --sdm-device enterprises/PROJECT/devices/DEVICE \
+  --zone whole_house --output tmp/takeout-prepared.json
+```
+
+The offline helper prepares validated rows; writing to the live Sheet is a separate bounded, idempotent upsert operation. Never commit its output, the original ZIP or private run-specific audit notes.
+
+## Independent email watchdog
+
+The bound collector uses its existing Drive/mail scopes to resolve the private spreadsheet owner, or the `NEST_ALERT_EMAIL` Script Property, and sends only to the configured LHL domain. It avoids `Session.getEffectiveUser()` so no extra `userinfo.email` grant is needed. Notification failures are isolated from collection. Checks follow the existing six-hour collector, so alerts can be delayed up to six hours and depend on that collector remaining active. Setup/recovery notifications are sent, ongoing problems are limited to one email per day. Confirm live delivery separately; unit tests do not establish delivery.
+
+## Local verification commands
+
+```sh
+npm test
+npm run lint
+python3 -m unittest discover -s tests -p 'test_nest_takeout.py'
+```
+
+Python tests cover wrapped JSON, missing/invalid counters, anomalous coverage, interval bounds, deterministic output, DST-fold keys and absence of fabricated HVAC/fan states. Live acceptance additionally requires source/native/canonical/Master readback and preservation of unrelated data.
+
+Historical-export references:
+
+- [Google Takeout instructions](https://support.google.com/accounts/answer/3024190)
+- [Nest Energy History](https://support.google.com/googlehome/answer/9247300)
+- [Nest privacy and data categories](https://support.google.com/googlehome/answer/9415830)

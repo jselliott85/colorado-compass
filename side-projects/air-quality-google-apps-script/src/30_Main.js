@@ -76,6 +76,7 @@ function aqRunCollection_(extendedBackfill) {
       });
     }
     aqRefreshNcarStatus_();
+    aqRefreshNestStatus_();
     aqRefreshDysonStatus_();
     aqCheckDysonAlert_();
   } finally {
