@@ -158,55 +158,50 @@ still excludes wind. Then compare matched-time speed/gust and inspect evening VO
 without interpreting association as causation. This prototype alone cannot perform that wind comparison.
 
 
-## US-NR1 research comparator — awaiting administrator response
+## US-NR1 research comparator — supplied batch
 
-**2026-10-14:** The owner contacted Sean Burns, the US-NR1 station administrator, to ask about
-access to current station data. A response is pending. No reply, access permission, credentials,
-or current feed has been received or verified, and no NR1 integration has been implemented or deployed.
+Sean supplied 41 UTC daily NetCDF files for September 1–October 11, 2026.
+[Inspection and full variable inventory](USNR1_INVENTORY.md) records verified metadata,
+selection rationale, coverage, and unresolved semantics. This supersedes the October 14
+pending-access note. The current batch is loaded into the existing private Sheet. Collector integration was deployed
+as version 6 on 2026-10-19 at the existing web-app URL, following Google reauthentication.
+Scheduled README/Schema regeneration retains the NR1 caveats; source metadata is also
+attached to NR1 source-table and Master headers.
 
-US-NR1 is Niwot Ridge Forest (LTER NWT1), at approximately 40.0329, -105.5470 and 3,050 m
-(about 10,000 ft). It is farther west and roughly 2,700 ft higher than the home, in a different
-subalpine ecosystem. Its intended role is a regional research comparator for forest-atmosphere
-processes, never a local weather proxy or substitute for Tempest. Wind provides broad mountain
-context, not the flow direction at the house. Associations with Dyson VOC would not establish
-causation, forest BVOC exposure, or identical conditions at the two locations.
+US-NR1 is a subalpine forest near 10,000 ft, substantially above the ~7,300 ft home;
+it is not ponderosa forest or local meteorology. Source roles: Dyson indoor AQ; Tempest
+hyperlocal weather; NCAR Foothills lower-elevation regional weather/wind; CDPHE regional AQ;
+US-NR1 higher-elevation forest/turbulence comparator. Raw statistics are preliminary,
+not final AmeriFlux products. Instrument-coordinate winds have no tilt correction/rotation.
+VOC correlation cannot establish source or causation.
 
-Read-only verification on 2026-10-14 established:
+No NR1 scheduler, scraping, or recurring requests to Sean’s temporary ZIP URL are added.
+Future supplied ZIPs/folders are incremental, timestamp/source-file upserts. Original files
+should stay in private storage. Never commit generated sensor exports or credentials.
 
-- Official public CU source: <https://urquell.colorado.edu/data_ameriflux/>.
-- Versioned ASCII climate/flux files and quality flags download without credentials or browser
-  automation from <https://urquell.colorado.edu/data_ameriflux/data_30min/>. A repeated flux-file
-  download returned identical content.
-- The latest published climate and flux files cover 2025, version `2026.04.24`; each has 17,520
-  half-hour rows. There is no verified overlap with the home dataset starting in September 2026.
-- Although the overview describes daily updates to five-minute data, the public `data_5min/`
-  listing exposes only five files from 2010–2014. The downloaded `nwt.140601.nc` internally
-  identifies June 2014. A current public feed remains unverified.
-- The AmeriFlux site record also lists the FLUXNET release through 2025:
-  <https://ameriflux.lbl.gov/sites/siteinfo/US-NR1>.
+```sh
+# Use the existing ncar-requirements.txt NetCDF dependencies in a virtual environment.
+python scripts/usnr1_import.py /path/to/supplied.zip --output tmp/usnr1-import
+# A directory containing niwot_YYYYMMDD.nc is also accepted.
+python -m unittest discover -s tests -p 'test_usnr1.py'
+```
 
-Prioritize `ustar_21m` (m/s), `z_L_21m` (dimensionless stability parameter), `Qh_21m` and
-`Qe_21m` (sensible/latent heat flux, W/m²), and `Rnet_25m_REBS` / `Rsw_in_25m_KZ` (net/incoming
-shortwave radiation, W/m²). Climate files also define temperature, RH, dew point, wind, pressure
-(kPa, convert to hPa by multiplying by 10), soil temperature and moisture. Measurement heights
-must remain explicit. The precipitation series uses nearby USCRN measurements after 2011.
+Outputs: persistent `usnr1.sqlite`, full metadata inventory, validation report,
+`US_NR1_5min.csv`, `US_NR1_15min.csv`, and daily `niwot_YYYYMMDD.nc.json` import chunks.
+Repeated identical files preserve ingested timestamps. Revised same-name files replace their
+records; different files claiming the same timestamp fail. Earlier September remains archived.
+Quarter-hour UTC keys are floors of centered five-minute labels; no interpolation.
+Second moments and QC remain ordered native samples in quarter-hour JSON, never pooled moments.
 
-Timestamps are **fixed MST (UTC−7), centered on the 30-minute averaging interval**, not Denver
-civil time. Missing values include `NaN`. Separate flags identify measured, modeled, interpolated,
-C1-station, alternate-sensor, and diurnal-average values; do not treat every numeric cell as an
-independent measured observation or strip its provenance. A future 15-minute master join must
-retain the native 30-minute interval and quality flags, must not manufacture quarter-hour
-measurements, and must not duplicate precipitation amounts.
-
-Before resuming implementation, verify any feed Sean supplies for current coverage, repeatable
-access, latency, timestamp/interval conventions, missing values, units, sensor heights and quality
-flags. Stop and report if it requires credentials/payment or lacks adequate documentation. No
-six-hour NR1 polling, backfill, source table, or master fields have been activated.
-
-Source roles remain: Dyson = indoor AQ; Tempest = primary hyperlocal weather; CDPHE = regional
-outdoor AQ; Carriage Hills = paused/manual or provisional nearby comparator; US-NR1 = proposed
-regional forest-atmosphere research comparator awaiting current-data access.
-
+For future supplied batches, deploy the reviewed source, upload daily JSON chunks to private Drive,
+set Script Property `NR1_IMPORT_FILE_ID` to one chunk’s file ID, then run `importUsNr1Batch`.
+Repeat per supplied day; retries are idempotent. The importer validates the entire daily grid,
+recomputes scalar aggregates, and patches only appended NR1 master columns at existing UTC keys.
+It does not rebuild historical Master rows or touch other source tables or Events.
+Native/quarter-hour tables retain earlier September even where no Master row exists.
+Normal future Master rebuilds include the NR1 join. README/Schema carry the source caveats.
+Master includes presence/count/coverage, air and sonic temperature, and instrument-axis w;
+variance, covariance and TKE promotion await validated pooling/count/QC conventions.
 
 ## NCAR Foothills — source verification (2026-10-14)
 

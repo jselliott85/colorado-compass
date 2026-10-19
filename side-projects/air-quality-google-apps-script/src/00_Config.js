@@ -22,6 +22,8 @@ const AQ_SHEETS = Object.freeze({
   CARRIAGE: 'Carriage_Hills_15min',
   NCAR: 'NCAR_Foothills_15min',
   NCAR_NATIVE: 'NCAR_Foothills_Native',
+  NR1_NATIVE: 'US_NR1_5min',
+  NR1: 'US_NR1_15min',
   EVENTS: 'Events',
   STATUS: 'Source_Status',
   HEALTH: 'Health_Log',
@@ -106,7 +108,9 @@ const AQ_MASTER_HEADERS = Object.freeze([
   'ncar_foothills_wind_speed_ms',
   'ncar_foothills_wind_direction_deg',
   'ncar_foothills_peak_gust_ms',
-  'ncar_foothills_precipitation_mm'
+  'ncar_foothills_precipitation_mm',
+  'nr1_present', 'nr1_observation_count', 'nr1_coverage_fraction',
+  'nr1_air_temperature_c', 'nr1_sonic_temperature_c', 'nr1_vertical_velocity_ms'
 ]);
 
 const AQ_DYSON_HEADERS = Object.freeze([

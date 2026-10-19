@@ -11,6 +11,7 @@ function aqRebuildMaster_(startUtc, endUtc) {
   const regional = aqIndexRows_(aqReadRowsBetween_(AQ_SHEETS.REGIONAL, AQ_REGIONAL_HEADERS, first, last));
   const carriage = aqIndexRows_(aqReadRowsBetween_(AQ_SHEETS.CARRIAGE, AQ_CARRIAGE_HEADERS, first, last));
   const ncar = aqIndexRows_(aqReadRowsBetween_(AQ_SHEETS.NCAR, AQ_NCAR_HEADERS, first, last));
+  const nr1 = aqIndexRows_(aqReadRowsBetween_(AQ_SHEETS.NR1, AQ_NR1_HEADERS, first, last));
   const rows = [];
   for (let instant = start.getTime(); instant <= end.getTime(); instant += AQ_BIN_MINUTES * 60000) {
     const timestamp = new Date(instant);
@@ -96,6 +97,7 @@ function aqRebuildMaster_(startUtc, endUtc) {
     AQ_NCAR_FIELDS.concat(['precipitation_mm']).forEach(function(field) {
       row['ncar_foothills_' + field] = n ? n[field] : null;
     });
+    aqNr1MasterValues_(nr1[key] || null).forEach(function(value, i) { row[AQ_NR1_MASTER_HEADERS[i]] = value; });
     rows.push(row);
   }
   return aqUpsertRows_(AQ_SHEETS.MASTER, AQ_MASTER_HEADERS, rows);

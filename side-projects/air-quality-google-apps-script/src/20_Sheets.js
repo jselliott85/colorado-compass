@@ -12,7 +12,7 @@ function aqEnsureSheet_(name, headers) {
     const differs = headers.some(function(header, index) { return current[index] !== header; });
     // Explicit append-only migration: preserve every existing column and cell.
     const appendMigration = name === AQ_SHEETS.MASTER &&
-      ['carriage_wind_speed_kmh', 'ncar_foothills_present'].some(function(firstNewColumn) {
+      ['carriage_wind_speed_kmh', 'ncar_foothills_present', 'nr1_present'].some(function(firstNewColumn) {
         const boundary = headers.indexOf(firstNewColumn);
         return boundary > 0 && current.slice(0, boundary).every(function(value, index) {
           return value === headers[index];
@@ -45,6 +45,8 @@ function aqInitializeSheets_() {
   aqEnsureSheet_(AQ_SHEETS.CARRIAGE, AQ_CARRIAGE_HEADERS);
   aqEnsureSheet_(AQ_SHEETS.NCAR, AQ_NCAR_HEADERS);
   aqEnsureSheet_(AQ_SHEETS.NCAR_NATIVE, AQ_NCAR_NATIVE_HEADERS);
+  aqEnsureSheet_(AQ_SHEETS.NR1_NATIVE, AQ_NR1_NATIVE_HEADERS);
+  aqEnsureSheet_(AQ_SHEETS.NR1, AQ_NR1_HEADERS);
   aqEnsureSheet_(AQ_SHEETS.EVENTS, AQ_EVENT_HEADERS);
   aqEnsureSheet_(AQ_SHEETS.STATUS, AQ_STATUS_HEADERS);
   aqEnsureSheet_(AQ_SHEETS.HEALTH, AQ_HEALTH_HEADERS);
@@ -175,6 +177,7 @@ function aqWriteReadme_() {
     ['regional_aq_source', 'CDPHE preliminary regional comparator data. PM2.5/PM10: Boulder-CU/Athens (AQS 080131001, about 5,322 ft). Ozone: Boulder Reservoir (AQS 080130014, about 5,203 ft).'],
     ['carriage_hills_pilot', 'KCOBOULD877 / Carriage Hills: optional provisional comparator and labeled fallback only; never replaces Tempest. Wind speed/gust provisional; direction untrusted (repeated 360 degrees). Pressure likely sea-level, distinct from Tempest station pressure. Precipitation total is the source accumulation, never summed. Review after at least 14 days of live collection; no automatic promotion.'],
     ['carriage_hills_analysis', 'After a manually recorded Tempest relocation, evaluate wind speed/gust agreement, evening VOC associations and winter coverage. Tempest wind remains excluded pending a separate validated collector change; no causal conclusions from association.'],
+    ['us_nr1', AQ_NR1_CAVEAT],
     ['ncar_foothills', 'NCAR Foothills Lab, 1625 m / 5331 ft; roughly 2000 ft below home. Regional rooftop weather/wind comparator only; never overwrites or substitutes for Tempest. Building wind shading and roof heating are known limitations; not research-quality or QC-certified. Differences across elevations may be informative.'],
     ['ncar_provisional', 'Bins use exact source UTC observation labels with no time shift; start/center/end averaging convention unconfirmed. Gust is the maximum reported wspd_max; its duration/reset definition remains unconfirmed. Precipitation_mm is missing pending interval semantics; cumulative counters retained only in native/raw data. Rain sensor does not measure snow reliably.'],
     ['regional_caveat', 'Regional monitors are not measurements at the home. The home environment is roughly 2,000 ft higher and west in the foothills.'],
@@ -208,6 +211,9 @@ function aqSchemaDescription_(table, column) {
     time_precision: ['text', '', 'Precision qualifier such as approximate or exact.', 'required'],
     schema_version: ['text', '', 'Schema version used to write the row.', 'required']
   };
+  if (table === AQ_SHEETS.NR1 || table === AQ_SHEETS.NR1_NATIVE || column.indexOf('nr1_') === 0) {
+    return aqNr1SchemaDefinition_(table, column);
+  }
   const ncarField = column.replace(/^ncar_foothills_/, '');
   if (table === AQ_SHEETS.NCAR || table === AQ_SHEETS.NCAR_NATIVE || column.indexOf('ncar_foothills_') === 0) {
     const ncarDefinitions = {
@@ -292,6 +298,8 @@ function aqWriteSchema_() {
     [AQ_SHEETS.CARRIAGE, AQ_CARRIAGE_HEADERS, 'WU KCOBOULD877 provisional pilot'],
     [AQ_SHEETS.NCAR, AQ_NCAR_HEADERS, 'NCAR Foothills regional comparator (provisional)'],
     [AQ_SHEETS.NCAR_NATIVE, AQ_NCAR_NATIVE_HEADERS, 'NCAR Foothills native 5-minute readings'],
+    [AQ_SHEETS.NR1_NATIVE, AQ_NR1_NATIVE_HEADERS, 'Sean Burns supplied US-NR1 raw batch'],
+    [AQ_SHEETS.NR1, AQ_NR1_HEADERS, 'US-NR1 raw-statistics comparator'],
     [AQ_SHEETS.EVENTS, AQ_EVENT_HEADERS, 'manual only'],
     [AQ_SHEETS.STATUS, AQ_STATUS_HEADERS, 'collector health']
   ];

@@ -384,3 +384,24 @@ test('latest NCAR archive refreshes current master missing flags without expandi
   assert.equal(r.aqNcarMasterEnd_('2026-10-13','2026-10-14T00:00:00Z',now),'2026-10-14T22:30:00Z');
   assert.equal(r.aqNcarMasterEnd_('2026-09-20','2026-09-21T00:00:00Z',now),'2026-09-21T00:00:00Z');
 });
+
+test('NR1 daily import validates centered grid, preserves native moments, and recomputes means', () => {
+  const api = loadRuntime(['aqValidateNr1Batch_', 'AQ_NR1_VARIABLE_METADATA', 'aqNr1MasterValues_']);
+  const batch = {source: 'us_nr1', version: 1, native: [], quarters: Array(96).fill({air_temperature_c: 999})};
+  for (let i = 0; i < 288; i += 1) {
+    const row = {timestamp_utc: new Date(Date.UTC(2026, 8, 20, 0, 2, 30) + i * 300000).toISOString().replace('.000Z', 'Z'), source_file: 'niwot_20260920.nc'};
+    Object.keys(api.AQ_NR1_VARIABLE_METADATA).forEach(f => { row[f] = null; });
+    row.T3_21m = i === 1 ? null : i;
+    row.w_w__csi_24m = 4;
+    batch.native.push(row);
+  }
+  const checked = api.aqValidateNr1Batch_(batch);
+  assert.equal(checked.quarters[0].air_temperature_c, 1);
+  assert.equal(checked.quarters[0].air_temperature_c_observation_count, 2);
+  assert.equal(checked.quarters[0].timestamp_utc, '2026-09-20T00:00:00Z');
+  assert.equal(checked.native[0].timestamp_local, '2026-09-19T18:02:30-06:00');
+  assert.equal(JSON.parse(checked.quarters[0].native_samples_json)[0].w_w__csi_24m, 4);
+  assert.equal(api.aqNr1MasterValues_(checked.quarters[0])[0], true);
+  batch.native[2].timestamp_utc = batch.native[1].timestamp_utc;
+  assert.throws(() => api.aqValidateNr1Batch_(batch), /time\/source/);
+});
