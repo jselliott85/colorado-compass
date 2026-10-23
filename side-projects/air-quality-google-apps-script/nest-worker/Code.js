@@ -1,4 +1,6 @@
 /** Standalone Apps Script worker. Never deploy this directory over the bound collector. */
+// Reset at each invocation; never cache mutable Script Properties or row positions across projects.
+let nestExecution_ = null;
 function nestProperties_() { return PropertiesService.getScriptProperties(); }
 function nestConfig_() {
   const p = nestProperties_().getProperties(), zones = JSON.parse(p.NEST_ZONES_JSON || '{}');
@@ -52,47 +54,93 @@ function nestPubsubToken_(force) {
   nestProperties_().setProperties({NEST_PUBSUB_ACCESS_TOKEN: token.access_token, NEST_PUBSUB_EXPIRES_MS: String(Date.now() + Number(token.expires_in) * 1000)});
   return token.access_token;
 }
+function nestBook_() {
+  if (!nestExecution_) return SpreadsheetApp.openById(nestConfig_().p.SPREADSHEET_ID);
+  if (!nestExecution_.book) nestExecution_.book = SpreadsheetApp.openById(nestConfig_().p.SPREADSHEET_ID);
+  return nestExecution_.book;
+}
 function nestSheet_(name, headers) {
-  const book = SpreadsheetApp.openById(nestConfig_().p.SPREADSHEET_ID);
+  if (nestExecution_ && nestExecution_.sheets[name]) return nestExecution_.sheets[name];
+  const book = nestBook_();
   let sheet = book.getSheetByName(name);
   if (!sheet) sheet = book.insertSheet(name);
   if (sheet.getMaxColumns() < headers.length) sheet.insertColumnsAfter(sheet.getMaxColumns(), headers.length - sheet.getMaxColumns());
   if (sheet.getLastRow()) {
     const prior = sheet.getRange(1, 1, 1, headers.length).getDisplayValues()[0];
-    if (prior.some(function(v, i) { return v !== headers[i]; })) throw new Error('Nest schema mismatch: ' + name);
+    const usageExtension = headers.length > 12 && name === 'Nest_Usage' && prior.slice(0, 12).every(function(v, i) { return v === headers[i]; }) && prior.slice(12).every(function(v) { return v === ''; });
+    if (usageExtension) sheet.getRange(1, 13, 1, headers.length - 12).setValues([headers.slice(12)]);
+    else if (prior.some(function(v, i) { return v !== headers[i]; })) throw new Error('Nest schema mismatch: ' + name);
   } else sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-  sheet.setFrozenRows(1);
+  if (sheet.getFrozenRows() !== 1) sheet.setFrozenRows(1);
+  if (nestExecution_) nestExecution_.sheets[name] = sheet;
   return sheet;
 }
+function nestCacheRows_(name, rows) {
+  // These tables have a single live writer under this worker's script lock.
+  // Never cache Source_Status or Master data shared with the bound project.
+  if (nestExecution_ && [NEST_LEDGER, NEST_HEALTH, NEST_ATTEMPTS].indexOf(name) >= 0) nestExecution_.rows[name] = rows;
+}
 function nestRead_(name, headers) {
+  if (nestExecution_ && nestExecution_.rows[name]) return nestExecution_.rows[name].map(function(r) { return Object.assign({}, r); });
   const s = nestSheet_(name, headers);
-  if (s.getLastRow() < 2) return [];
-  return s.getRange(2, 1, s.getLastRow() - 1, headers.length).getValues().map(function(values) {
+  if (s.getLastRow() < 2) { nestCacheRows_(name, []); return []; }
+  const rows = s.getRange(2, 1, s.getLastRow() - 1, headers.length).getValues().map(function(values) {
     const row = {}; headers.forEach(function(k, i) { row[k] = k === 'date_utc' && values[i] instanceof Date ? values[i].toISOString().slice(0, 10) : values[i] === '' ? null : values[i]; }); return row;
   });
+  nestCacheRows_(name, rows);
+  return rows.map(function(r) { return Object.assign({}, r); });
 }
 /** Timestamp/zone and observation-id upserts. Preserve identical rows' original ingestion time. */
 function nestUpsert_(name, headers, rows) {
+  if (!rows.length) return;
   const sheet = nestSheet_(name, headers), current = nestRead_(name, headers), byKey = {};
-  current.forEach(function(r, i) { byKey[r[headers[0]]] = i + 2; });
+  current.forEach(function(r, i) {
+    const key = r[headers[0]];
+    if (byKey[key] && name !== 'Nest_Usage') throw new Error('Nest duplicate stored key');
+    // Existing daily duplicates are retained; update the latest snapshot only, never sum them.
+    if (!byKey[key] || String(r.updated_at_utc || '') >= String(current[byKey[key] - 2].updated_at_utc || '')) byKey[key] = i + 2;
+  });
   const append = [], updates = [], dedupe = {};
-  rows.forEach(function(r) { dedupe[r[headers[0]]] = r; });
+  rows.forEach(function(r) {
+    const key = r[headers[0]], prior = dedupe[key];
+    if (prior && headers.some(function(h) { return h !== 'ingested_at_utc' && nestCell_(prior[h]) !== nestCell_(r[h]); })) throw new Error('Nest conflicting input key');
+    dedupe[key] = r;
+  });
   Object.keys(dedupe).sort().forEach(function(key) {
-    const r = dedupe[key], values = headers.map(function(h) { return r[h] === null || r[h] === undefined ? '' : r[h]; });
-    if (byKey[key]) updates.push({row: byKey[key], values: values});
+    const r = dedupe[key], values = headers.map(function(h) { return nestCell_(r[h]); });
+    if (byKey[key]) {
+      const old = current[byKey[key] - 2];
+      if (headers.every(function(h, i) { return h === 'ingested_at_utc' || nestCell_(old[h]) === values[i]; })) return;
+      if (name === NEST_LEDGER) throw new Error('Nest conflicting stored observation');
+      updates.push({row: byKey[key], values: values});
+    }
     else append.push(values);
   });
+  nestWriteBlocks_(sheet, 1, updates);
+  if (append.length) {
+    const start = sheet.getLastRow() + 1;
+    if (sheet.getMaxRows() < start + append.length - 1) sheet.insertRowsAfter(sheet.getMaxRows(), start + append.length - 1 - sheet.getMaxRows());
+    if (name === 'Nest_Usage') sheet.getRange(start, 1, append.length, 1).setNumberFormat('@');
+    sheet.getRange(start, 1, append.length, headers.length).setValues(append);
+    // Replay sorts observations/health in memory; do not sort their entire sheets per minute.
+    if ([NEST_TABLE, 'Nest_Usage'].indexOf(name) >= 0 && sheet.getLastRow() > 2) sheet.getRange(2, 1, sheet.getLastRow() - 1, headers.length).sort({column: 1, ascending: true});
+  }
+  function objectRow(values) {
+    const r = {}; headers.forEach(function(k, i) { r[k] = values[i] === '' ? null : values[i]; }); return r;
+  }
+  const next = current.slice();
+  updates.forEach(function(u) { next[u.row - 2] = objectRow(u.values); });
+  append.forEach(function(values) { next.push(objectRow(values)); });
+  if (append.length && [NEST_TABLE, 'Nest_Usage'].indexOf(name) >= 0) next.sort(function(a, b) { return String(a[headers[0]]).localeCompare(String(b[headers[0]])); });
+  nestCacheRows_(name, next);
+}
+function nestCell_(value) { return value === null || value === undefined ? '' : value; }
+function nestWriteBlocks_(sheet, column, updates) {
   updates.sort(function(a, b) { return a.row - b.row; });
   for (let i = 0; i < updates.length;) {
     const start = updates[i].row, values = [updates[i++].values];
     while (i < updates.length && updates[i].row === start + values.length) values.push(updates[i++].values);
-    sheet.getRange(start, 1, values.length, headers.length).setValues(values);
-  }
-  if (append.length) {
-    const start = sheet.getLastRow() + 1;
-    if (sheet.getMaxRows() < start + append.length - 1) sheet.insertRowsAfter(sheet.getMaxRows(), start + append.length - 1 - sheet.getMaxRows());
-    sheet.getRange(start, 1, append.length, headers.length).setValues(append);
-    if (name !== 'Source_Status' && sheet.getLastRow() > 2) sheet.getRange(2, 1, sheet.getLastRow() - 1, headers.length).sort({column: 1, ascending: true});
+    sheet.getRange(start, column, values.length, values[0].length).setValues(values);
   }
 }
 function nestArchive_(name, object) {
@@ -124,14 +172,31 @@ function installNestTrigger() {
   ScriptApp.newTrigger('runNestCollection').timeBased().everyMinutes(1).create();
 }
 function runNestCollection() {
-  const c = nestConfig_();
-  if (c.p.NEST_ENABLED !== 'true') return {status: 'disabled'};
-  const lock = LockService.getScriptLock();
-  if (!lock.tryLock(1000)) return {status: 'busy'};
-  const run = Utilities.getUuid(), start = nestIso_(Date.now());
-  nestUsageAdd_('runs', 1);
-  let drained = false, snapshotOk = false, lateCount = 0;
+  const started = Date.now(), run = Utilities.getUuid(), start = nestIso_(started);
+  const attempt = {run_id: run, started_at_utc: start, outcome: 'running', counted: false, stage: 'configuration'};
+  const pendingKey = 'NEST_PENDING_' + run, p = nestProperties_();
+  // Unique keys allow busy/disabled invocations to record without racing a shared counter.
+  const buffered = Object.keys(p.getProperties()).filter(function(k) { return k.indexOf('NEST_PENDING_') === 0; }).length < 512;
+  if (buffered) p.setProperty(pendingKey, JSON.stringify(attempt));
+  else p.setProperty('NEST_TELEMETRY_GAP_' + start.slice(0, 10), 'Pending buffer exceeded; attempt outcomes and elapsed totals incomplete.');
+  let lock, locked = false, c, h;
+  nestExecution_ = {sheets: {}, rows: {}};
   try {
+    c = nestConfig_();
+    if (c.p.NEST_ENABLED !== 'true') { attempt.outcome = 'disabled'; return {status: 'disabled'}; }
+    lock = LockService.getScriptLock();
+    attempt.stage = 'lock';
+    if (!lock.tryLock(1000)) { attempt.outcome = 'busy'; return {status: 'busy'}; }
+    locked = true;
+    attempt.counted = true;
+    attempt.stage = 'telemetry_recovery';
+    p.setProperty(pendingKey, JSON.stringify(attempt));
+    // A running record from a previous lock owner has no completion evidence.
+    nestDrainAttempts_(run);
+    attempt.stage = 'collection';
+    nestUpsert_(NEST_ATTEMPTS, NEST_ATTEMPT_HEADERS, [attempt]);
+    SpreadsheetApp.flush();
+    let drained = false, snapshotOk = false, lateCount = 0;
     const existing = nestRead_(NEST_LEDGER, NEST_LEDGER_HEADERS), seen = {};
     existing.forEach(function(r) { seen[r.observation_id] = r; });
     const fresh = [], acks = [];
@@ -178,15 +243,27 @@ function runNestCollection() {
       nestProperties_().setProperty('NEST_LAST_SNAPSHOT_MS', String(Date.now()));
     }
     nestUpsert_(NEST_LEDGER, NEST_LEDGER_HEADERS, fresh);
-    if (acks.length) nestPubsub_('acknowledge', {ackIds: acks}); // durable raw + normalized observations before acknowledgement
-    const finish = nestIso_(Date.now()), h = {run_id: run, started_at_utc: start, finished_at_utc: finish, drained: drained && !lateCount, snapshot_ok: snapshotOk, status: lateCount ? 'degraded' : 'success'};
+    if (acks.length) {
+      SpreadsheetApp.flush();
+      nestPubsub_('acknowledge', {ackIds: acks}); // durable raw + normalized observations before acknowledgement
+    }
+    const finish = nestIso_(Date.now()); h = {run_id: run, started_at_utc: start, finished_at_utc: finish, drained: drained && !lateCount, snapshot_ok: snapshotOk, status: lateCount ? 'degraded' : 'success'};
     // Batch health archives while preserving every individual continuity checkpoint.
     if (Math.floor(Date.parse(finish) / 900000) !== Number(c.p.NEST_HEALTH_ARCHIVE_BIN || 0)) {
       const after = Date.parse(c.p.NEST_HEALTH_ARCHIVE_THROUGH || '1970-01-01T00:00:00Z');
-      nestArchive_('health-batch-' + run, health.concat([h]).filter(function(v) { return Date.parse(v.finished_at_utc) > after; }));
-      nestProperties_().setProperties({NEST_HEALTH_ARCHIVE_BIN: String(Math.floor(Date.parse(finish) / 900000)), NEST_HEALTH_ARCHIVE_THROUGH: finish});
+      // Archive prior checkpoints after their completion/error is known. The current
+      // checkpoint is deferred so an early status cannot become permanent raw success.
+      const completed = health.filter(function(v) { return Date.parse(v.finished_at_utc) > after; });
+      if (completed.length) nestArchive_('health-batch-' + run, completed);
+      const through = completed.map(function(v) { return v.finished_at_utc; }).sort().slice(-1)[0] || c.p.NEST_HEALTH_ARCHIVE_THROUGH || '1970-01-01T00:00:00Z';
+      nestProperties_().setProperties({NEST_HEALTH_ARCHIVE_BIN: String(Math.floor(Date.parse(finish) / 900000)), NEST_HEALTH_ARCHIVE_THROUGH: through});
     }
-    nestUpsert_(NEST_HEALTH, NEST_HEALTH_HEADERS, [h]); health.push(h);
+    attempt.checkpoint_at_utc = finish;
+    attempt.stage = 'materialization';
+    nestUpsert_(NEST_ATTEMPTS, NEST_ATTEMPT_HEADERS, [attempt]);
+    // Checkpoint time supports stream coverage; it is not end-to-end completion.
+    nestUpsert_(NEST_HEALTH, NEST_HEALTH_HEADERS, [Object.assign({}, h, {status: 'checkpoint'})]);
+    health.push(h);
     if (!c.p.NEST_COLLECTION_START_UTC && fresh.length) nestProperties_().setProperty('NEST_COLLECTION_START_UTC', start);
     const beginning = nestProperties_().getProperty('NEST_COLLECTION_START_UTC');
     const earliest = existing.concat(fresh).map(function(r) { return r.timestamp_utc; }).sort()[0];
@@ -206,18 +283,74 @@ function runNestCollection() {
     }
     nestTrim_(NEST_LEDGER, NEST_LEDGER_HEADERS, 'timestamp_utc', 3);
     nestTrim_(NEST_HEALTH, NEST_HEALTH_HEADERS, 'finished_at_utc', 3);
-    nestStatus_(lateCount ? 'degraded' : 'success', finish, lateCount ? 'Old events archived; manual replay required. Duration coverage unknown during recovery.' : c.events ? (drained ? 'Event queue drained; durations provisional.' : 'Backlog: duration coverage unknown.') : 'Snapshots only: no runtime estimates.');
+    attempt.stage = 'monitoring';
+    nestWriteUsage_(); // Completed attempts appear in totals on the next lock-owning run.
+    SpreadsheetApp.flush();
+    nestUpsert_(NEST_HEALTH, NEST_HEALTH_HEADERS, [h]);
+    nestStatus_(lateCount || (c.events && !drained) ? 'degraded' : 'success', nestIso_(Date.now()), lateCount ? 'Old events archived; manual replay required. Duration coverage unknown during recovery.' : c.events ? (drained ? 'Event queue drained; durations provisional.' : 'Backlog: duration coverage unknown.') : 'Snapshots only: no runtime estimates.');
+    SpreadsheetApp.flush();
+    attempt.outcome = 'success';
+    attempt.stage = 'complete';
+    attempt.completed_at_utc = nestIso_(Date.now());
+    nestUpsert_(NEST_ATTEMPTS, NEST_ATTEMPT_HEADERS, [attempt]);
+    SpreadsheetApp.flush();
     return {status: 'success', observations_received: fresh.length, event_queue_drained: drained};
   } catch (e) {
-    // Static sanitized errors only; transport bodies and credentials never escape.
-    const finish = nestIso_(Date.now());
-    nestUpsert_(NEST_HEALTH, NEST_HEALTH_HEADERS, [{run_id: run, started_at_utc: start, finished_at_utc: finish, drained: false, snapshot_ok: false, status: 'error'}]);
-    nestStatus_('error', finish, /^Nest (HTTP \d+|network unavailable|token refresh failed|setup incomplete|late event requires archive replay)$/.test(e.message) ? e.message : 'Nest collection/processing failed; inspect private archive and configuration.');
-    return {status: 'error'};
+    attempt.outcome = 'error';
+    attempt.error_code = nestErrorCode_(e);
+    attempt.completed_at_utc = nestIso_(Date.now());
+    // Only static errors are persisted; never transport bodies, tokens, or arbitrary exceptions.
+    if (locked) {
+      try {
+        nestUpsert_(NEST_HEALTH, NEST_HEALTH_HEADERS, [{run_id: run, started_at_utc: start, finished_at_utc: nestIso_(Date.now()), drained: false, snapshot_ok: false, status: 'error'}]);
+        nestStatus_('error', nestIso_(Date.now()), 'Nest collection/processing failed at ' + attempt.stage + ' (' + attempt.error_code + '); inspect attempt and platform history.');
+        nestUpsert_(NEST_ATTEMPTS, NEST_ATTEMPT_HEADERS, [attempt]);
+        SpreadsheetApp.flush();
+      } catch (reportError) { /* Pending record remains the fallback; stale timestamps are independently detectable. */ }
+    }
+    return {status: 'error', stage: attempt.stage};
   } finally {
-    try { nestUsageAdd_('runtime_ms', Date.now() - Date.parse(start)); nestWriteUsage_(); } finally { lock.releaseLock(); }
+    try {
+      attempt.completed_at_utc = nestIso_(Date.now());
+      attempt.elapsed_ms = Date.now() - started;
+      if (buffered || locked) p.setProperty(pendingKey, JSON.stringify(attempt));
+    } finally {
+      nestExecution_ = null;
+      if (locked) lock.releaseLock();
+    }
   }
 }
+function nestErrorCode_(error) {
+  const message = String(error && error.message || '');
+  const http = /^Nest HTTP (\d{3})$/.exec(message);
+  if (http) return 'http_' + http[1];
+  if (message === 'Nest network unavailable') return 'network_unavailable';
+  if (message === 'Nest token refresh failed') return 'token_refresh_failed';
+  if (/Service using too much computer time for one day/.test(message)) return 'platform_runtime_quota';
+  if (/Service invoked too many times|Limit exceeded/.test(message)) return 'platform_service_limit';
+  return 'processing_failed';
+}
+/** Under the worker lock only. Upsert before deletion makes deferred telemetry retry-safe. */
+function nestDrainAttempts_(currentRun) {
+  const p = nestProperties_(), props = p.getProperties();
+  const keys = Object.keys(props).filter(function(k) {
+    if (k.indexOf('NEST_PENDING_') !== 0 || k === 'NEST_PENDING_' + currentRun) return false;
+    const a = JSON.parse(props[k]);
+    // Another invocation may still be waiting for this lock. Only the previous
+    // counted owner, a terminal record, or a record older than execution limits is recoverable.
+    return a.outcome !== 'running' || a.counted === true || Date.now() - Date.parse(a.started_at_utc) > 7 * 60000;
+  });
+  const rows = keys.map(function(k) {
+    const a = JSON.parse(props[k]);
+    if (a.outcome === 'running') { a.outcome = 'unfinished'; a.stage = 'termination_unknown'; }
+    return a;
+  });
+  if (!rows.length) return;
+  nestUpsert_(NEST_ATTEMPTS, NEST_ATTEMPT_HEADERS, rows);
+  SpreadsheetApp.flush();
+  keys.forEach(function(k) { p.deleteProperty(k); });
+}
+
 function nestStatus_(status, now, message) {
   const headers = ['source', 'last_attempt_utc', 'last_success_utc', 'status', 'consecutive_failures', 'rows_fetched', 'rows_upserted', 'earliest_observation_utc', 'latest_observation_utc', 'message', 'dyson_retention_risk', 'schema_version'];
   const prior = nestRead_('Source_Status', headers).filter(function(r) { return r.source === 'nest'; })[0] || {};
@@ -228,23 +361,44 @@ function nestStatus_(status, now, message) {
 }
 /** Patch only Nest columns on existing UTC keys; never reconstruct other sources. */
 function nestPatchMaster_(rows) {
-  const book = SpreadsheetApp.openById(nestConfig_().p.SPREADSHEET_ID), sheet = book.getSheetByName('Master_15min');
-  if (!sheet || sheet.getLastRow() < 2) return;
+  const sheet = nestBook_().getSheetByName('Master_15min');
+  if (!sheet || sheet.getLastRow() < 2 || !rows.length) return;
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getDisplayValues()[0], boundary = headers.indexOf('nest_present');
   if (boundary < 0 || headers.slice(boundary, boundary + 3).join(',') !== 'nest_present,nest_zone_count,nest_zones_json') throw new Error('Nest deploy bound Master schema first');
-  const index = nestIndex_(rows), keys = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getDisplayValues();
-  const values = sheet.getRange(2, boundary + 1, keys.length, 3).getValues();
+  const index = nestIndex_(rows), keys = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getDisplayValues(), candidates = [], updates = [];
+  const seenKeys = new Set();
   keys.forEach(function(key, i) {
-    if (index[key[0]]) values[i] = [true, index[key[0]].length, JSON.stringify(index[key[0]])];
+    if (seenKeys.has(key[0])) throw new Error('Nest duplicate Master UTC key');
+    seenKeys.add(key[0]);
+    if (index[key[0]]) candidates.push({row: i + 2, key: key[0], values: [true, index[key[0]].length, JSON.stringify(index[key[0]])]});
   });
-  sheet.getRange(2, boundary + 1, keys.length, 3).setValues(values);
+  // Read only affected spans, batching adjacent keys rather than one RPC per bin.
+  for (let i = 0; i < candidates.length;) {
+    const block = [candidates[i++]];
+    while (i < candidates.length && candidates[i].row === block[0].row + block.length) block.push(candidates[i++]);
+    const old = sheet.getRange(block[0].row, boundary + 1, block.length, 3).getValues();
+    block.forEach(function(u, j) { if (!old[j].every(function(v, k) { return v === u.values[k]; })) updates.push(u); });
+  }
+  // Cross-project locks do NOT synchronize. Recheck each block immediately before writing.
+  // The remaining bound-writer race requires deployment review; this is not a transaction.
+  for (let i = 0; i < updates.length;) {
+    const block = [updates[i++]];
+    while (i < updates.length && updates[i].row === block[0].row + block.length) block.push(updates[i++]);
+    const currentKeys = sheet.getRange(block[0].row, 1, block.length, 1).getDisplayValues();
+    if (block.some(function(u, j) { return currentKeys[j][0] !== u.key; })) throw new Error('Nest Master keys changed concurrently');
+    sheet.getRange(block[0].row, boundary + 1, block.length, 3).setValues(block.map(function(u) { return u.values; }));
+  }
 }
 function nestTrim_(name, headers, timeField, days) {
   const sheet = nestSheet_(name, headers), rows = nestRead_(name, headers), cutoff = Date.now() - days * 86400000;
-  const retained = rows.filter(function(r) { return Date.parse(r[timeField]) >= cutoff; });
+  const retained = rows.filter(function(r) {
+    if (name === NEST_ATTEMPTS) return r.outcome === 'running' || Date.parse(r.completed_at_utc || r.started_at_utc) >= cutoff;
+    return Date.parse(r[timeField]) >= cutoff;
+  });
   if (retained.length === rows.length) return;
   if (retained.length) sheet.getRange(2, 1, retained.length, headers.length).setValues(retained.map(function(r) { return headers.map(function(k) { return r[k] === null ? '' : r[k]; }); }));
   sheet.getRange(retained.length + 2, 1, rows.length - retained.length, headers.length).clearContent();
+  nestCacheRows_(name, retained);
 }
 /** Private setup web app: deploy access=MYSELF, never ANYONE. Credential contents are never echoed. */
 function doGet() {
@@ -284,18 +438,69 @@ function activateNestCollection() {
   return 'Nest collection enabled: event pull about every minute, snapshots every five minutes, completed quarter-hour bins. Check Source_Status for source=nest.';
 }
 
-/** Worker-only usage proxy, never an invoice or project-wide billing meter. */
+/** UTC operational telemetry; never the platform quota window or an invoice. */
+function nestUsageDay_(day) {
+  const p = nestProperties_(), key = 'NEST_USAGE_DAY_' + day;
+  const stored = p.getProperty(key);
+  if (stored) return JSON.parse(stored);
+  const legacy = JSON.parse(p.getProperty('NEST_USAGE_CURRENT') || '{}');
+  return legacy.day === day ? legacy : {day: day};
+}
 function nestUsageAdd_(key, amount) {
-  const p = nestProperties_(), day = nestIso_(Date.now()).slice(0, 10), prior = JSON.parse(p.getProperty('NEST_USAGE_CURRENT') || '{}');
-  const u = prior.day === day ? prior : {day: day};
+  const day = nestIso_(Date.now()).slice(0, 10), u = nestUsageDay_(day);
   u[key] = Number(u[key] || 0) + amount;
-  p.setProperty('NEST_USAGE_CURRENT', JSON.stringify(u));
+  nestProperties_().setProperty('NEST_USAGE_DAY_' + day, JSON.stringify(u));
+}
+function nestAttemptTotals_(attempts) {
+  const days = {};
+  function dayAt(ms) {
+    const day = nestIso_(ms).slice(0, 10);
+    if (!days[day]) days[day] = {attempts: 0, counted_runs: 0, successful_runs: 0, failed_runs: 0, disabled_runs: 0, lock_busy_runs: 0, unfinished_runs: 0, elapsed_ms: 0};
+    return days[day];
+  }
+  attempts.forEach(function(a) {
+    const first = Date.parse(a.started_at_utc), d = dayAt(first);
+    d.attempts += 1;
+    if (a.counted === true) d.counted_runs += 1;
+    const field = {success: 'successful_runs', error: 'failed_runs', disabled: 'disabled_runs', busy: 'lock_busy_runs', unfinished: 'unfinished_runs'}[a.outcome];
+    if (field) d[field] += 1;
+    // Unknown termination has no invented elapsed duration. Split measured elapsed at UTC midnight.
+    if (a.elapsed_ms === null || a.elapsed_ms === undefined || a.elapsed_ms === '') return;
+    const end = first + Number(a.elapsed_ms);
+    for (let cursor = first; cursor < end;) {
+      const stop = Math.min(end, (Math.floor(cursor / 86400000) + 1) * 86400000);
+      dayAt(cursor).elapsed_ms += stop - cursor; cursor = stop;
+    }
+  });
+  return days;
 }
 function nestWriteUsage_() {
-  const u = JSON.parse(nestProperties_().getProperty('NEST_USAGE_CURRENT') || '{}');
-  if (!u.day) return;
-  const warning = Number(u.delivery_proxy_bytes || 0) >= 50 * 1024 * 1024 || Number(u.archive_bytes || 0) >= 10 * 1024 * 1024 || Number(u.runtime_ms || 0) >= 3 * 3600000;
-  const headers = ['date_utc', 'updated_at_utc', 'runs', 'pull_requests', 'messages_received', 'snapshot_requests', 'delivery_proxy_bytes', 'archive_bytes', 'archive_files', 'runtime_minutes', 'status', 'scope'];
-  nestUpsert_('Nest_Usage', headers, [{date_utc: u.day, updated_at_utc: nestIso_(Date.now()), runs: u.runs || 0, pull_requests: u.pull_requests || 0, messages_received: u.messages_received || 0, snapshot_requests: u.snapshot_requests || 0, delivery_proxy_bytes: u.delivery_proxy_bytes || 0, archive_bytes: u.archive_bytes || 0, archive_files: u.archive_files || 0, runtime_minutes: Number(u.runtime_ms || 0) / 60000, status: warning ? 'review_usage' : 'normal', scope: 'This worker only; delivery proxy is not billable volume. Excludes publisher, other subscriptions and services. Counters begin at telemetry deployment.'}]);
-  if (warning) nestStatus_('degraded', nestIso_(Date.now()), 'Usage review: daily delivery proxy >=50 MiB, archive growth >=10 MiB or runtime >=180 minutes. Inspect Nest_Usage.');
+  const totals = nestAttemptTotals_(nestRead_(NEST_ATTEMPTS, NEST_ATTEMPT_HEADERS).filter(function(a) { return a.outcome !== 'running'; }));
+  const today = nestIso_(Date.now()).slice(0, 10);
+  if (!totals[today]) totals[today] = {};
+  const headers = ['date_utc', 'updated_at_utc', 'runs', 'pull_requests', 'messages_received', 'snapshot_requests', 'delivery_proxy_bytes', 'archive_bytes', 'archive_files', 'runtime_minutes', 'status', 'scope', 'attempts', 'counted_runs', 'successful_runs', 'failed_runs', 'disabled_runs', 'lock_busy_runs', 'unfinished_runs'];
+  const cutoff = nestIso_(Date.now() - 3 * 86400000).slice(0, 10);
+  const rows = Object.keys(totals).sort().map(function(day) {
+    const u = nestUsageDay_(day), t = u.post_repair_totals || totals[day];
+    // Compact whole days before pruning the attempt ledger; a retry cannot count them twice.
+    if (day < cutoff && !u.post_repair_totals) {
+      u.post_repair_totals = t;
+      nestProperties_().setProperty('NEST_USAGE_DAY_' + day, JSON.stringify(u));
+    }
+    const minutes = (Number(u.runtime_ms || 0) + Number(t.elapsed_ms || 0)) / 60000;
+    const warning = Number(u.delivery_proxy_bytes || 0) >= 50 * 1024 * 1024 || Number(u.archive_bytes || 0) >= 10 * 1024 * 1024 || minutes >= 180;
+    const row = {date_utc: day, updated_at_utc: nestIso_(Date.now()), runs: Number(u.runs || 0) + Number(t.counted_runs || 0), pull_requests: u.pull_requests || 0, messages_received: u.messages_received || 0, snapshot_requests: u.snapshot_requests || 0, delivery_proxy_bytes: u.delivery_proxy_bytes || 0, archive_bytes: u.archive_bytes || 0, archive_files: u.archive_files || 0, runtime_minutes: minutes, status: warning ? 'review_usage' : 'normal', scope: 'This worker only; not billable volume or platform quota usage. Legacy baseline plus post-repair measured elapsed; outcome columns begin at repair. Completed telemetry deferred to next lock-owning run; hard terminations have unknown elapsed. Excludes final pending-property write, lock release and platform startup/teardown.'};
+    const gap = nestProperties_().getProperty('NEST_TELEMETRY_GAP_' + day);
+    if (gap) row.scope += ' TELEMETRY GAP: ' + gap;
+    headers.slice(12).forEach(function(k) { row[k] = t[k] || 0; });
+    return row;
+  });
+  const existing = nestRead_('Nest_Usage', headers);
+  rows.forEach(function(row) {
+    const prior = existing.filter(function(r) { return r.date_utc === row.date_utc; }).sort(function(a, b) { return String(a.updated_at_utc).localeCompare(String(b.updated_at_utc)); }).slice(-1)[0];
+    if (prior && headers.every(function(k) { return k === 'updated_at_utc' || nestCell_(prior[k]) === nestCell_(row[k]); })) row.updated_at_utc = prior.updated_at_utc;
+  });
+  nestUpsert_('Nest_Usage', headers, rows);
+  // Retain three complete UTC days plus today; compacted daily totals stay in Properties/Sheets.
+  nestTrim_(NEST_ATTEMPTS, NEST_ATTEMPT_HEADERS, 'started_at_utc', (Date.now() - Date.parse(cutoff + 'T00:00:00Z')) / 86400000);
 }

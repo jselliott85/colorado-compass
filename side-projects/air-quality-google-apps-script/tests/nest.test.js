@@ -81,11 +81,12 @@ test('Nest simultaneous conflicting HVAC reports preserve unknown time until nex
 test('Nest usage meter rolls over by UTC day and flags abnormal consumption without claiming billing',()=>{
  const props={};let row;
  const c=runtime(true,{PropertiesService:{getScriptProperties:()=>({getProperty:k=>props[k],setProperty:(k,v)=>{props[k]=v;}})}});
+ c.nestRead_=()=>[];c.nestTrim_=()=>{};
  c.nestUpsert_=(name,headers,rows)=>{assert.equal(name,'Nest_Usage');row=rows[0];};
  let warning=false;c.nestStatus_=()=>{warning=true;};
  props.NEST_USAGE_CURRENT=JSON.stringify({day:'2000-01-01',archive_bytes:123});
  c.nestUsageAdd_('runs',1);c.nestWriteUsage_();assert.equal(row.runs,1);assert.equal(row.archive_bytes,0);assert.equal(row.status,'normal');
- c.nestUsageAdd_('archive_bytes',10*1024*1024);c.nestWriteUsage_();assert.equal(row.status,'review_usage');assert.equal(warning,true);assert.match(row.scope,/not billable/);
+ c.nestUsageAdd_('archive_bytes',10*1024*1024);c.nestWriteUsage_();assert.equal(row.status,'review_usage');assert.equal(warning,false);assert.match(row.scope,/not billable/);
 });
 test('Nest independent email watchdog sends setup, throttles failures and reports recovery to owner',()=>{
  const props={},sent=[];

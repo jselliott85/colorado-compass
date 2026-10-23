@@ -2,6 +2,8 @@
 const NEST_TABLE = 'Nest_15min';
 const NEST_LEDGER = 'Nest_Observations';
 const NEST_HEALTH = 'Nest_Collection_Health';
+const NEST_ATTEMPTS = 'Nest_Run_Attempts';
+const NEST_ATTEMPT_HEADERS = ['run_id', 'started_at_utc', 'checkpoint_at_utc', 'completed_at_utc', 'outcome', 'counted', 'elapsed_ms', 'stage', 'error_code'];
 const NEST_TAKEOUT = 'Nest_Takeout_15min';
 const NEST_TAKEOUT_HEADERS = Object.freeze(['bin_zone_key','timestamp_utc','interval_end_utc','zone_id','heating_seconds_reported','cooling_seconds_reported','fan_time_seconds_reported','mode_counter_sum_seconds','indoor_temp_source_value','indoor_humidity_source_value','heating_target_source_value','cooling_target_source_value','validation_status','source_file','export_sha256','retrieved_at_utc']);
 const NEST_FIELDS = Object.freeze(['device_id', 'zone_id', 'hvac_status', 'thermostat_mode',
@@ -143,6 +145,16 @@ function aqRefreshNestStatus_() {
   const rows = aqObjectRows_(AQ_STATUS_HEADERS, sheet.getRange(2, 1, sheet.getLastRow() - 1, AQ_STATUS_HEADERS.length).getValues());
   const prior = rows.filter(function(r) { return r.source === 'nest'; })[0];
   if (!prior) return;
+  const attempts = aqSpreadsheet_().getSheetByName(NEST_ATTEMPTS);
+  if (attempts && attempts.getLastRow() > 1) {
+    const records = aqObjectRows_(NEST_ATTEMPT_HEADERS, attempts.getRange(2, 1, attempts.getLastRow() - 1, NEST_ATTEMPT_HEADERS.length).getValues());
+    const latest = records.filter(function(r) { return r.counted === true; }).sort(function(a, b) { return Date.parse(a.started_at_utc) - Date.parse(b.started_at_utc); }).slice(-1)[0];
+    if (latest && (latest.outcome !== 'success' || !latest.completed_at_utc) && Date.now() - Date.parse(latest.started_at_utc) > 300000) {
+      prior.status = 'stale';
+      prior.message = 'Nest attempt has no successful end-to-end completion; inspect Nest_Run_Attempts and platform history. ' + NEST_CAVEAT;
+      aqUpdateSourceStatus_(prior);
+    }
+  }
   if (!prior.last_attempt_utc || Date.now() - Date.parse(prior.last_attempt_utc) > 300000) {
     prior.status = 'stale';
     prior.message = 'Nest worker has not reported within five minutes. Runtime coverage after its last healthy checkpoint is unknown. ' + NEST_CAVEAT;
