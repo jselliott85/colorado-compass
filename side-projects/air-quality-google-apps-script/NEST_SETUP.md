@@ -142,7 +142,9 @@ Historical-export references:
 - [Nest Energy History](https://support.google.com/googlehome/answer/9247300)
 - [Nest privacy and data categories](https://support.google.com/googlehome/answer/9415830)
 
-## Local repair deployment review (not yet deployed)
+## Repair deployment procedure
+
+Deployed on 2026-10-23: bound Head source updated; the existing owner-only worker deployment updated from version 7 to version 8, then **Start collection** replaced its trigger. Verified exactly one version-8 worker trigger at one-minute cadence and the existing bound Head trigger at six-hour cadence. A naturally scheduled version-8 run completed with a final successful attempt marker and Source_Status success/zero failures. Non-Nest Master values, all 2,756 historical Takeout rows and Events matched the predeployment baseline; Master keys remained unique. Manifests/scopes were unchanged. Initial checks do not establish long-term performance, UTC rollover behavior or the next six-hour watchdog outcome; those observation checks below remain outstanding. Version 7 and the predeployment bound source were captured locally for rollback.
 
 The worker caches workbook/sheet handles and worker-owned ledger/health/attempt rows only within an invocation; it never caches shared Source_Status or Master rows. Observation/health sheets no longer undergo a full-sheet sort on every append: replay and continuity still sort in memory. Upserts compare values excluding ingestion timestamps, skip identical rows, reject conflicting observation/input identities, and batch adjacent changed rows. Unchanged rows keep their original ingestion time. Master reads only affected Nest spans and writes only changed existing-key Nest cells. It does not create Master UTC keys or touch non-Nest fields, historical Takeout rows, source gaps or Events.
 
