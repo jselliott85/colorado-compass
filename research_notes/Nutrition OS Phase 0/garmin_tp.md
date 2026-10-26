@@ -1,0 +1,47 @@
+# Garmin Index and TrainingPeaks feasibility
+
+Research date: October 26, 2026. No authenticated API calls, user data reads, key creation, provisioning, or external writes were performed. All provider capabilities below are **verified in official documentation**, unless explicitly marked inference or unverified. Reading documentation is not execution validation of an integration.
+
+## Can Garmin Index measurements be imported through an official personal API?
+
+### Takeaway
+Yes: an official Personal API now provides a supported individual-access route and documented weight-history endpoints. Weight ingestion is feasible; actual Index body-composition field availability, units, and timestamps must pass an authenticated sample test before promising automatic import of every metric.
+
+### Cited Findings
+- Garmin explicitly offers its Personal API for individuals accessing their own data, separate from business integrations for multiple users. Customers generate their own key in Garmin Connect Web; a business partner application is unnecessary for this personal route. Keys expire after a selected 30, 90, 180 days or one year and are displayed once. Deleting a key invalidates it and its associated tokens. The key is exchanged for an OAuth2 access token valid for 24 hours or until key expiry. Refresh tokens are unsupported; obtain another access token using the key. — [Personal API FAQ](https://developer.garmin.com/gc-developer-program/personal/personal-faq/)
+- The documented token request is POST `https://personal.connectapi.garmin.com/personalapitoken-service/personal-api/personal-api-key/token` with an `Authorization: ApiKey …` header. API key creation requires accepting terms and choosing expiry. No key was created during this research. — [Personal API instructions](https://developer.garmin.com/gc-developer-program/personal/personal-api/)
+- The official API reference lists GET `/weight-service/weight/all/{startDate}/{endDate}` and GET `/weight-service/weight/range/{startDate}/{endDate}`. Its schemas include `DateWeightDTO`, `WeightRangeDTO`, `DailyWeightSummary`, and `WeightAverageDTO`. The rendered reference did not expose the individual schema properties to this research tool. — [Official Swagger reference](https://developer.garmin.com/gc-developer-program/personal/swagger-docs)
+- Garmin's own Python client wraps the range endpoint with `includeAll=true`, ISO calendar dates, and Bearer authentication. Its README explains key exchange, protected token cache, and no automatic recovery from a revoked-token 401. This is Garmin-owned source, unlike unofficial password-login libraries. — [Official Python client](https://github.com/garmin/connect-personal-api-python), [weight wrapper source](https://raw.githubusercontent.com/garmin/connect-personal-api-python/main/src/garmin_personal_api/client.py)
+- The program overview describes Personal health data as JSON, pull only. Business Health API is a distinct organizational integration path, with Starter and Enterprise arrangements. It is unnecessary overhead for this single-user project. — [Program overview](https://developer.garmin.com/gc-developer-program/overview/)
+- Garmin's support documentation describes weight after Index upload and warns that a Connect account can contain extra weigh-ins from manual entries and other connected sources. Therefore an API weight record should not automatically be labelled Index-sourced until its provenance is checked. — [Weight data FAQ](https://support.garmin.com/en-US/?faq=zS4yMMr7REAVHBPYY6DaZ5)
+- Supported fallback: Garmin documents a weight CSV export from Connect Web, Health Stats → Weight → date range → Export. Its account data export is another option but may take up to 30 days, making it unsuitable as a daily ingestion mechanism. — [Garmin export instructions](https://support.garmin.com/zh-HK/?faq=W1TvTPW8JZ6LfJSfK512Q8)
+
+### Inferences
+- Recommend one small daily pull of a recent overlapping date range, initially weight only; add body fat, body water, muscle mass, bone mass, BMI only if the account payload supplies them and their semantics/units are confirmed. Preserve nulls rather than zero-fill. Treat impedance-derived body composition as estimates, even though it comes from a measuring device.
+- Use source measurement identifier where present, not daily date alone: multiple weigh-ins are possible. Otherwise define a documented fallback key from source, original timestamp and record attributes after inspecting actual output. Preserve exact source timestamp and derive America/Denver reporting date; a date-only source value must stay date-only.
+- An expiring Personal API key can live in GitHub Actions Secrets after approval. A fresh bearer token each daily run avoids persisting a rotating refresh token. Never put key/token cache, body data, or API output into git or Actions artifacts/logs. Import body metrics only; Garmin activity endpoints are outside scope because Strava remains authoritative.
+- If automatic access fails, use weekly supported weight CSV import or a natural-language weigh-in in Scout with a stable entry ID. A manual import from Garmin export should preserve Garmin provenance and import batch ID; a typed scale reading should be marked manual transcription.
+
+### Gaps
+- **Unverified:** user account's key eligibility in execution, accepted supplemental terms, exact API price, quota numbers, range limits, complete retained history, source IDs/timestamps/units, and body-fat/body-composition payload fields. Official pages inspected did not publish Personal pricing or numeric limits. Budget no additional Garmin fee provisionally, but verify at setup rather than call it guaranteed free.
+- No API key or token was generated and no actual Index record was fetched. The critical Phase 1 test is a small date-range read containing a known Index weigh-in, checked against Connect, including kg/lb conversion and null body-composition fields.
+
+## Can TrainingPeaks supply future coach workouts with minimal overhead?
+
+### Takeaway
+The official API is not available for personal use. Use Premium calendar subscription if already available and its contents prove sufficient; otherwise a weekly copy/import of the next week from the coach's calendar is the simplest fallback.
+
+### Cited Findings
+- TrainingPeaks restricts API access to approved developers of commercial fitness applications/devices and explicitly excludes personal use. Its listed planned-workout read horizon is seven future days. This blocks a direct personal API implementation; do not apply for a commercial integration merely for this project. — [TrainingPeaks API](https://help.trainingpeaks.com/hc/en-us/articles/234441128-TrainingPeaks-API)
+- The supported Premium `.ics` calendar subscription displays five past days and fourteen future days. Coach changes propagate, potentially with a delay of up to 24 hours. It includes workouts and events, and workouts lacking a start time have no assigned time slot. The URL is obtained in Settings → Account → Calendar. TrainingPeaks documents subscription through Outlook, Apple Calendar, and Google Calendar. — [Calendar subscription instructions](https://help.trainingpeaks.com/hc/en-us/articles/204072184-Sync-your-calendar)
+- Current public US pricing is $19.95 monthly or $134.99 annually. A coach relationship does not automatically include Premium; a coach may bundle it. Therefore no incremental charge if already included, otherwise prefer weekly manual import over paying solely for calendar access. — [TrainingPeaks athlete pricing](https://www.trainingpeaks.com/pricing/for-athletes/)
+
+### Inferences
+- A tiny `.ics` reader writing the existing Sheets Planned workouts tab is technically feasible without a new database. However, provider documentation promises calendar subscription, not a Sheets integration; executing a direct feed pull, inspecting its fields and confirming permitted use are Phase 1 acceptance tests, not already proven functionality.
+- Treat subscription URL as a private credential and store it in Secrets after approval. Do not commit or print it. Use event UID where present as source ID, preserve original source date/time semantics, and upsert revisions. Reconcile only within the feed's bounded visible window: an event vanishing because it ages beyond that window is not cancellation evidence.
+- Import future coach-prescribed workouts only; filter historical feed events out of nutrition activity accounting. Keep planned duration/intensity separate from completed Strava values. All-day events retain planned local date with nullable time. If the feed lacks intensity, record unknown and use coach text; do not infer structured intervals from calendar titles.
+- Weekly fallback: user supplies next 7 days' dates, workout names/types, planned duration and coach intensity notes (copy/paste or image). Scout writes stable manual plan IDs and corrects by those IDs. Confirm schedule changes with the user when matching an ambiguous manual entry.
+
+### Gaps
+- **Unverified:** user's Premium entitlement, actual feed contents (duration, sport, intensity, descriptions, stable UID, cancellation/revision semantics), access authentication beyond private URL, precise refresh cadence for direct reads, and direct feed → Sheets execution.
+- No need to establish partner OAuth for Phase 1. The critical test is a future workout sample including an all-day workout, a coach edit, a move, and a removed workout; refresh delays mean the plan cannot be guaranteed current for a just-edited session.

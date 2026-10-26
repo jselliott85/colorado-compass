@@ -1,0 +1,7 @@
+node_modules/
+local/
+*.xlsx
+*.png
+*.csv
+.env*
+__pycache__/

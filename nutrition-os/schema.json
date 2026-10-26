@@ -1,0 +1,16 @@
+{
+  "version": "1.0",
+  "timezone": "America/Denver",
+  "input_last_row": 2001,
+  "summary_days": 366,
+  "tabs": {
+    "Food log": ["meal_id", "operation_id", "local_date", "meal_type", "description", "kcal", "protein_g", "carbohydrate_g", "fat_g", "consumed_at_utc", "time_precision", "quantity", "quantity_unit", "quantity_method", "nutrition_basis", "source", "source_id", "recorded_at_utc", "updated_at_utc", "revision", "status", "correction_reason"],
+    "Daily nutrition targets": ["target_id", "local_date", "kcal", "protein_g", "carbohydrate_g", "fat_g", "source", "recorded_at_utc", "updated_at_utc", "revision", "status", "correction_reason"],
+    "Completed activities": ["activity_id", "local_date", "sport_type", "start_at_utc", "moving_s", "elapsed_s", "distance_m", "estimated_kcal", "average_hr_bpm", "average_power_w", "energy_kj", "power_method", "source", "source_id", "recorded_at_utc", "updated_at_utc", "revision", "status", "correction_reason"],
+    "Planned workouts": ["plan_id", "local_date", "sport_type", "title", "planned_duration_s", "intensity_description", "start_at_utc", "time_precision", "source", "source_id", "source_revision", "last_seen_at_utc", "recorded_at_utc", "updated_at_utc", "revision", "status", "correction_reason"],
+    "Body metrics": ["measurement_id", "local_date", "weight_kg", "body_fat_pct", "body_water_pct", "muscle_mass_kg", "bone_mass_kg", "measured_at_utc", "time_precision", "measurement_method", "device", "source", "source_id", "recorded_at_utc", "updated_at_utc", "revision", "status", "correction_reason"],
+    "Daily summary": ["local_date", "meal_count", "kcal", "protein_g", "carbohydrate_g", "fat_g", "kcal_target", "protein_target_g", "carbohydrate_target_g", "fat_target_g", "kcal_remaining", "logging_status", "day_confirmation", "source"],
+    "Weekly summary": ["week_start_local_date", "days_with_entries", "confirmed_complete_days", "mean_logged_kcal", "mean_logged_protein_g", "mean_logged_carbohydrate_g", "mean_logged_fat_g", "source"],
+    "Settings": ["setting_key", "value", "description", "source"]
+  }
+}
