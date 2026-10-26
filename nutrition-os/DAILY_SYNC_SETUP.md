@@ -62,6 +62,6 @@ Dashboard hidden T3 is the labelled date-only program start, October 26, 2026. C
 - Same source fetch without validation rewrite; exact-ID no-op and readback: [successful duplicate check](https://github.com/jselliott85/colorado-compass/actions/runs/40383873503).
 - Independent connector readback after both runs: one active Body metrics record, revision 1; historical measurement retained; Change vs start blank and Awaiting post-start weigh-in shown. Local new-identity validation compared all fields before/after exactly and found no changes.
 - All 26 synthetic tests passed, covering DST, rolling windows, ambiguous writes and retry reconciliation.
-- GitHub failure-only notification preference verification requires browser sign-in. No new messaging service is configured. Routine sync success remains silent.
+- GitHub notification preferences were verified in the signed-in account: Actions notifications on GitHub and by email, failed workflows only. Existing default email was left unchanged. Delivery of an actual failure email was not induced/tested. No new messaging service is configured. Routine sync success remains silent.
 
 - Final deployed workflow verified active through GitHub API; remote main schedule parsed under on.schedule as 45 11 * * * with timezone America/Denver, and enabled gate read back true. The normal seven-day run on the final scheduled workflow [succeeded](https://github.com/jselliott85/colorado-compass/actions/runs/40384170010). The first automatic scheduled event is still future; manual dispatch exercises the same job.
