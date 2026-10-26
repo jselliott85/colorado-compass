@@ -12,6 +12,15 @@ import garmin_validate as g
 
 
 class ValidationTests(unittest.TestCase):
+    def test_body_profile_matches_append_only_schema(self):
+        schema = json.loads((Path(__file__).parent / "schema.json").read_text())
+        self.assertEqual(schema["version"], "1.0")
+        self.assertEqual(schema["body_metric_profile_version"], g.BODY_METRIC_PROFILE_VERSION)
+        raw = {"samplePk": 123, "sourceType": "INDEX_SCALE", "timestampGMT": 1793016000000, "weight": 75000}
+        row = g.normalize_index_s2(raw, observed_at_utc="2026-10-26T18:00:00Z")
+        self.assertEqual(set(row), set(schema["tabs"]["Body metrics"]))
+        self.assertEqual(schema["tabs"]["Body metrics"][-2:], ["bmi", "source_record_json"])
+
     def test_confirmed_profile_and_exact_source_dedup(self):
         raw = {"samplePk": 1234567890123, "sourceType": "INDEX_SCALE", "timestampGMT": 1793016000000,
                "weight": 75000, "bodyFat": 20, "bodyWater": 50, "muscleMass": 30000, "boneMass": 3000, "bmi": 24}

@@ -1,6 +1,6 @@
 # First Garmin measurement validation
 
-Status: the user saved the key locally. Keychain access, token exchange and an authenticated historical weight-range read succeeded. The user confirmed the Index S2 model and the returned measurement against Connect. No Sheet writes or recurring ingestion are enabled. See [GARMIN_VALIDATION_RESULTS.md](GARMIN_VALIDATION_RESULTS.md) for actual field/format findings and [SCOUT_GARMIN_HANDOFF.md](SCOUT_GARMIN_HANDOFF.md) for the pending two-column proposal.
+Status: Keychain access, token exchange and an authenticated historical weight-range read succeeded. The user confirmed the Index S2 measurement against Connect. Scout added the two coordinated columns, and Codex completed the approved one-real-record write/readback and no-op duplicate test. See [BODY_METRIC_PROFILE.md](BODY_METRIC_PROFILE.md). Recurring ingestion remains off; no new Google authorization was created.
 
 ## Key recommendation and secure storage
 

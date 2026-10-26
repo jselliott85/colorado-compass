@@ -1,0 +1,2 @@
+# Google-maintained server authentication client, reviewed PyPI release 2026-10-12.
+google-auth[requests]==2.62.0

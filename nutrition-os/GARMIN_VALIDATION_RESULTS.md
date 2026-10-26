@@ -1,6 +1,6 @@
 # Garmin Index S2 validation results
 
-October 26, 2026. No credentials, measurement values, source IDs or raw health records are included in this tracked report. Actual captures and a staged normalized row remain owner-only in ignored local/garmin. No workbook cells have been changed.
+October 26, 2026. No credentials, measurement values, source IDs or raw health records are included in this tracked report. Actual captures remain owner-only in ignored local/garmin. The later approved one-real-record write/readback and no-op repeat are now complete after Scout added S:T; see [BODY_METRIC_PROFILE.md](BODY_METRIC_PROFILE.md). Recurring ingestion remains off. The sections below retain the original validation findings and proposed setup context.
 
 ## Executed and confirmed
 

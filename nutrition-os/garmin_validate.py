@@ -21,6 +21,7 @@ BASE = "https://personal.connectapi.garmin.com"
 TOKEN_PATH = "/personalapitoken-service/personal-api/personal-api-key/token"
 SERVICE = "nutrition-os.garmin.personal-api"
 ACCOUNT = "nutrition-os"
+BODY_METRIC_PROFILE_VERSION = "garmin-index-s2/1.0"
 PRIVATE_DIR = Path(__file__).resolve().parent / "local" / "garmin"
 
 
@@ -131,7 +132,7 @@ def inspect_records(records):
 def normalize_index_s2(record, *, observed_at_utc):
     """Account profile confirmed against Connect. Stages data; never writes Sheets.
 
-    Actual profile: masses in grams; percentages in 0..100; timestampGMT Unix ms.
+    Profile garmin-index-s2/1.0: grams; percentages in 0..100; UTC Unix ms.
     Do not apply this profile to a different account/provider without validation.
     """
     source_id = record.get("samplePk")

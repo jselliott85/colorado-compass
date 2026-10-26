@@ -31,8 +31,8 @@ Missing weigh-ins are gaps, never zero or forward-filled observations. The rolli
 
 ## Remaining integration gates
 
-Garmin authentication and six actual Index S2 metrics, units, timestamps, provenance and repeated source-ID reconciliation are validated. The first normalized measurement is staged privately. Before the Body metrics schema/write step, coordinate the concrete S=bmi and T=source_record_json extension with Scout per the user's instruction; see SCOUT_GARMIN_HANDOFF.md. Do not silently bump the shared schema version or discard original timestamps to bypass this requirement.
+Scout applied the coordinated S=bmi and T=source_record_json extension. The first real upsert, exact 20-field readback and no-op repeat are complete; each chart now reads one actual historical observation. See BODY_METRIC_PROFILE.md for garmin-index-s2/1.0. The shared Settings schema version remains 1.0 and the self-reported starting-weight goal is not a Garmin observation.
 
-After that coordinated migration, perform one real upsert, exact readback and no-op repeat. Recurring daily ingestion remains off until this passes and secure scheduled Google authorization is established. Keychain works for local authentication; do not assume a CI job can use the local Keychain or interactive connector. No Garmin workouts are imported.
+Recurring daily ingestion remains off. Secure scheduled Google authorization and key-expiry/renewal setup are separate future steps. Keychain works for local authentication; do not assume a CI job can use the local Keychain or interactive connector. No Garmin workouts are imported.
 
 Strava remains disabled pending the user's support inquiry (ticket #19194). Claude retains exclusive routine ownership of Completed activities. This does not block nutrition, native charts or Garmin body-metric readiness.

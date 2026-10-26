@@ -1,0 +1,51 @@
+# REVIEW COPY ONLY. Not in .github/workflows; cannot schedule or access secrets.
+# Approved hosted setup; deployed workflow is managed in .github/workflows.
+name: Nutrition OS Garmin sync
+
+on:
+  workflow_dispatch:
+    inputs:
+      validation_date:
+        description: Optional historical date for the one-time end-to-end/duplicate test
+        required: false
+        type: string
+      verify_existing_write:
+        description: Manual validation only; rewrite identical existing fields and verify readback
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nutrition-os-garmin-body-metrics
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: vars.NUTRITION_GARMIN_SYNC_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Install Google authorization client
+        run: python3 -m pip install --disable-pip-version-check --quiet -r nutrition-os/requirements-sync.txt
+      - name: Sync body measurements and verify persistence
+        env:
+          GARMIN_PERSONAL_API_KEY: ${{ secrets.NUTRITION_GARMIN_PERSONAL_API_KEY }}
+          NUTRITION_GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.NUTRITION_GOOGLE_SERVICE_ACCOUNT_JSON }}
+          NUTRITION_SPREADSHEET_ID: ${{ secrets.NUTRITION_SPREADSHEET_ID }}
+          VALIDATION_DATE: ${{ inputs.validation_date }}
+          VERIFY_EXISTING_WRITE: ${{ inputs.verify_existing_write }}
+        run: |
+          args=()
+          if [[ -n "$VALIDATION_DATE" ]]; then
+            args+=(--validation-date "$VALIDATION_DATE")
+          fi
+          if [[ "$VERIFY_EXISTING_WRITE" == 'true' ]]; then
+            args+=(--verify-existing-write)
+          fi
+          python3 -B nutrition-os/garmin_sync.py "${args[@]}"

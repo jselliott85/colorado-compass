@@ -49,6 +49,8 @@ export function dashboardRequests(properties, {inputLastRow=2001, dailyLastRow=3
   repeat(2,85,8,metric('D'));
   repeat(2,85,9,metric('F','/0.45359237'));
   set(1,18,'plan_duration_s');set(2,18,'min_pace_days_per_window');set(2,19,3);
+  // User-defined program baseline date; historical scale records remain visible.
+  set(3,18,'program_start_date');set(3,19,46321); // 2026-10-26, date-only.
   fx(1,`=IF(COUNTIFS('Planned workouts'!$B$2:$B$${inputLastRow},$B$4,'Planned workouts'!$P$2:$P$${inputLastRow},"active")=0,"",SUMIFS('Planned workouts'!$E$2:$E$${inputLastRow},'Planned workouts'!$B$2:$B$${inputLastRow},$B$4,'Planned workouts'!$P$2:$P$${inputLastRow},"active"))`,19);
   // Narrow visible view. Sources, targets and goal settings are never copied.
   text(2,'Nutrition OS');merge(2);fmt(2,2,{textFormat:{fontFamily:'Arial',fontSize:17,bold:true}});
@@ -73,10 +75,10 @@ export function dashboardRequests(properties, {inputLastRow=2001, dailyLastRow=3
   text(21,'7-day average');fx(21,`=IF(${recentCount}=0,"",${average(recent)})`);merge(21,1);fmt(21,21,{numberFormat:{type:'NUMBER',pattern:'0.0" lb"'}},1);
   text(22,'Starting weight');fx(22,`=${setting('starting_weight_lb')}`);merge(22,1);fmt(22,22,{numberFormat:{type:'NUMBER',pattern:'0.0" lb"'}},1);
   text(23,'Goal range');fx(23,`=TEXT(${setting('goal_weight_min_lb')},"0")&"–"&TEXT(${setting('goal_weight_max_lb')},"0")&" lb"`);merge(23,1);
-  text(24,'Change vs start');fx(24,'=IF(ISNUMBER(B19),B19-B22,"")');merge(24,1);fmt(24,24,{numberFormat:{type:'NUMBER',pattern:'+0.0" lb";-0.0" lb";0.0" lb"'}},1);
-  text(25,'Avg weekly loss');fx(25,`=IF(AND(${recentCount}>=$T$2,${previousCount}>=$T$2),${average(previous)}-(${average(recent)}),"")`);merge(25,1);fmt(25,25,{numberFormat:{type:'NUMBER',pattern:'0.00" lb/wk"'}},1);
+  text(24,'Change vs start');fx(24,'=IF(AND(ISNUMBER(B19),ISNUMBER(B20),B20>=$T$3),B19-B22,"")');merge(24,1);fmt(24,24,{numberFormat:{type:'NUMBER',pattern:'+0.0" lb";-0.0" lb";0.0" lb"'}},1);
+  text(25,'Avg weekly loss');fx(25,`=IF(AND($B$4-13>=$T$3,${recentCount}>=$T$2,${previousCount}>=$T$2),${average(previous)}-(${average(recent)}),"")`);merge(25,1);fmt(25,25,{numberFormat:{type:'NUMBER',pattern:'0.00" lb/wk"'}},1);
   text(26,'Intended pace');fx(26,`=TEXT(${setting('weight_loss_min_lb_per_week')},"0.##")&"–"&TEXT(${setting('weight_loss_max_lb_per_week')},"0.##")&" lb/wk"`);merge(26,1);
-  fx(27,`=IF(B20="","Awaiting Garmin measurements",IF($B$4-B20>7,"Last reading "&TEXT(B20,"mmm d")&" · not current","Recent observations: "&${recentCount}&" / 7 days"))`,0);merge(27);
+  fx(27,`=IF(B20="","Awaiting Garmin measurements",IF(B20<$T$3,"Awaiting post-start weigh-in",IF($B$4-B20>7,"Last reading "&TEXT(B20,"mmm d")&" · not current","Recent observations: "&${recentCount}&" / 7 days")))`,0);merge(27);
   fx(28,`=IF(COUNT(${weights})=0,"Awaiting Garmin measurements",IF(${recentCount}<$T$2,"More weigh-ins needed for trend","Daily readings + 7-day average"))`,0);merge(28);
   text(40,'Body composition');merge(40);
   const latestMetric=c=>`=IF(COUNT($${c}$2:$${c}$85)=0,"",INDEX($${c}$2:$${c}$85,MATCH(MAXIFS(${dates},$${c}$2:$${c}$85,">=0",$${c}$2:$${c}$85,"<>"),${dates},0)))`;
