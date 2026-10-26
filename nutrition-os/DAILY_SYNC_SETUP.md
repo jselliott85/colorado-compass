@@ -1,10 +1,12 @@
-# Daily Garmin sync: prepared, not activated
+# Daily Garmin sync
 
-The independent Dashboard baseline correction is live. Hosted credentials/access have **not** been created or moved, and no schedule has been installed. The user approved the dedicated service account/key, workbook-only sharing, and transfer of the Google and existing Garmin credentials into repository Secrets. Existing-project selection is pending; approval has not yet been exercised.
+The Dashboard baseline correction is live. The user approved hosted credentials and workbook access. A dedicated service account was created in the existing `air-quality-nest` project with no project roles or domain-wide delegation; Sheets API was enabled. The existing workbook alone was shared with that identity as Editor. Three repository Secrets were saved and their names verified. The temporary Google key download was removed after transfer and successful authorization validation. The existing Garmin Keychain item was retained.
 
-## Concrete proposed job
+The local real-record test through the new identity passed: one identical persisted-record write/readback, followed by an unchanged-ID no-op; all Body metrics fields and row counts remained unchanged. Hosted write/readback and duplicate reconciliation both passed. The daily schedule is configured at 11:45 America/Denver, with the repository kill switch true. Independent connector readback confirmed exactly one active canonical measurement at revision 1 and a blank pre-baseline Change vs start.
 
-Use a GitHub-hosted Ubuntu runner in the existing repository. The Mac does not need to be awake or online. The review copy is `garmin-sync.workflow.yml` inside nutrition-os, outside .github/workflows so it cannot run yet. It specifies:
+## Job configuration
+
+Use a GitHub-hosted Ubuntu runner in the existing repository. The Mac does not need to be awake or online. The deployed workflow is `.github/workflows/nutrition-garmin-sync.yml`. Its intended daily schedule is:
 
 ```yaml
 schedule:
@@ -24,7 +26,7 @@ This scope applies to spreadsheet files, not individual tabs. The service accoun
 
 For the smallest initial setup, the proposal uses one Google service-account JSON key in encrypted GitHub Secrets. This is a persistent credential and requires approval before creation. Workload Identity Federation could avoid that key but adds identity configuration; it is not silently provisioned here. The current interactive connector cannot be exported or assumed available in GitHub Actions.
 
-## Approved access/secret actions awaiting setup
+## Approved access/secret setup
 
 1. Reuse an existing user-selected Google Cloud project; enable Sheets API if needed and create the dedicated service account (no project roles/domain-wide delegation).
 2. Grant that identity Editor access to the existing Nutrition OS workbook only.
@@ -42,14 +44,22 @@ The runner re-reads Body metrics headers and records before each mutation, prese
 
 Before activating the schedule:
 
-- Confirm the actual Garmin key expiry in Connect. The recommended pilot key was 30 days; its selected expiry was not independently read from the provider. Renew through Connect before expiry and securely replace both approved secret copies. Bearer tokens are acquired fresh per run and kept in memory. Google service-account keys do not inherit Garmin's expiry; review/rotate/revoke that credential separately.
+- Confirm the actual Garmin key expiry in Connect. The user confirmed a 30-day Garmin access key on October 26, 2026. Confirm the exact expiry shown in Connect; plan renewal before that deadline (approximately November 25 if issued October 26). Renew through Connect before expiry and securely replace both approved secret copies. Bearer tokens are acquired fresh per run and kept in memory. Google service-account keys do not inherit Garmin's expiry; review/rotate/revoke that credential separately.
 - Resolve the dedicated Google identity and access grant, confirm key storage, install the workflow initially for manual validation, and keep scheduled operation gated until that test passes.
 - Dispatch the known historical validation date with verify_existing_write=true. This deliberately rewrites the identical persisted record only, retaining recorded_at_utc/revision, then checks readback. Dispatch it again normally: expect a source-ID no-op and exactly one canonical record. Report the actual cloud run URLs/results; do not call synthetic tests or the earlier connector write a hosted end-to-end run.
 - Enable GitHub's failed-workflow-only notifications for the user who owns this schedule. No custom success email, chat message, issue bot or external notification service is configured. Verify that failure notifications reach the intended user; notification preferences are separate from this script. An entirely disabled/dropped schedule cannot report its own failure, so note the inactivity/queue limitation and check freshness in the workbook.
 - Only then install/enable the 11:45 America/Denver schedule and record its verified configuration and first successful hosted run.
 
-The proposed repository variable NUTRITION_GARMIN_SYNC_ENABLED is a separate kill switch. Removing/revoking a key or workbook grant also stops access. Explicit approval was received for the listed credential/access actions. No credentials have yet been created or moved; project selection and hosted validation remain pending.
+The proposed repository variable NUTRITION_GARMIN_SYNC_ENABLED is a separate kill switch. Removing/revoking a key or workbook grant also stops access. Explicit approval was received for these credential/access actions. Google service account: `nutrition-os-garmin-sync@air-quality-nest.iam.gserviceaccount.com`. Secret contents and private measurements are not stored in this repository.
 
 ## Program baseline correction
 
 Dashboard hidden T3 is the labelled date-only program start, October 26, 2026. Change vs start is blank when the latest observation predates that date, while the real historical weight/date and chart points remain intact. The display says Awaiting post-start weigh-in. The weekly loss calculation also requires both seven-day comparison windows to be on/after the baseline, so historical backfills cannot become program loss pace. The starting-weight setting remains self-reported; it was not inserted as a Garmin measurement. Settings were not changed.
+
+## Hosted validation evidence — October 26, 2026
+
+- Real source fetch, identical persisted-record write, and exact separate readback: [successful run](https://github.com/jselliott85/colorado-compass/actions/runs/40383739675).
+- Same source fetch without validation rewrite; exact-ID no-op and readback: [successful duplicate check](https://github.com/jselliott85/colorado-compass/actions/runs/40383873503).
+- Independent connector readback after both runs: one active Body metrics record, revision 1; historical measurement retained; Change vs start blank and Awaiting post-start weigh-in shown. Local new-identity validation compared all fields before/after exactly and found no changes.
+- All 26 synthetic tests passed, covering DST, rolling windows, ambiguous writes and retry reconciliation.
+- GitHub failure-only notification preference verification requires browser sign-in. No new messaging service is configured. Routine sync success remains silent.

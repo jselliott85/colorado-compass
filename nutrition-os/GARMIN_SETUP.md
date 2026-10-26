@@ -40,3 +40,5 @@ This command contains dates only. Use the bundled modern Python: this Mac's syst
 6. Only after the first reading and identity strategy are validated, coordinate one Body metrics upsert/readback test against the existing schema. Keep meals, nutrition targets, workouts and Settings intact. Scheduling is a separate later step, including its Google authentication and secure credential storage decisions.
 
 If any gate fails, retain the private capture for diagnosis and stop. Never guess units, invent a stable source ID, write partial body metrics or activate a recurring job to bypass a failed validation. Real response files should be deleted after the private comparison is complete; do not attach them to public issues or commit them.
+
+Daily hosted sync and credential renewal: see [DAILY_SYNC_SETUP.md](DAILY_SYNC_SETUP.md). The approved GitHub job is configured for 11:45 America/Denver with a seven-day lookback. The user confirmed a 30-day Garmin key; renew both Keychain and GitHub Secret copies before expiry.

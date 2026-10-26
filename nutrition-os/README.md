@@ -60,3 +60,5 @@ Use [SCOUT_LOGGING.md](SCOUT_LOGGING.md) v1.0 unchanged for food write/readback/
 [build-workbook.mjs](build-workbook.mjs) creates a blank template using the approved `@oai/artifact-tool` runtime. It includes disposable synthetic formula checks and clears them before export. Run a copy in a temporary directory with a node_modules link to that runtime, passing this directory and a temporary output directory. No dependency is installed into this repository. Native post-import settings and validation are recorded in [native-foundation.mjs](native-foundation.mjs).
 
 Keep health records, real test payloads, workbook exports, credentials, OAuth tokens and private subscription links outside git. `local/`, exports and environment files are ignored here. Workbook location and execution results belong in an ignored local handoff, not in public logs. No workflow or production code is changed.
+
+Daily hosted sync and credential renewal: see [DAILY_SYNC_SETUP.md](DAILY_SYNC_SETUP.md). The approved GitHub job is configured for 11:45 America/Denver with a seven-day lookback. The user confirmed a 30-day Garmin key; renew both Keychain and GitHub Secret copies before expiry.

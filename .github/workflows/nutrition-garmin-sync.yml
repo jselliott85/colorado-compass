@@ -1,4 +1,3 @@
-# REVIEW COPY ONLY. Not in .github/workflows; cannot schedule or access secrets.
 # Approved hosted setup; deployed workflow is managed in .github/workflows.
 name: Nutrition OS Garmin sync
 
@@ -14,6 +13,9 @@ on:
         required: false
         default: false
         type: boolean
+  schedule:
+    - cron: '45 11 * * *'
+      timezone: America/Denver
 
 permissions:
   contents: read

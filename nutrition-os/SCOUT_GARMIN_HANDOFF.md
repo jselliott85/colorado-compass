@@ -18,3 +18,5 @@ Schema version coordination: preserve SCOUT_LOGGING.md v1.0 and its Food log hea
 Migration must first read current headers and verify S:T are genuinely unused throughout the live grid. Recheck IDs before first data write. Add headers/formats/validation and update the Body metrics filter/header protection only; preserve all existing cells, defaults, target formulas and tab order. Add one validated record, read every persisted field back, re-read source IDs and repeat reconciliation without a second row. Do not overwrite existing body records or insert into an occupied/partially occupied row. A source conflict stops for review.
 
 The approved one-record test is complete. No recurring schedule or new Google authorization was enabled. The existing native charts now have a real source measurement; limited history must still be distinguished from a meaningful trend.
+
+Daily hosted sync and credential renewal: see [DAILY_SYNC_SETUP.md](DAILY_SYNC_SETUP.md). The approved GitHub job is configured for 11:45 America/Denver with a seven-day lookback. The user confirmed a 30-day Garmin key; renew both Keychain and GitHub Secret copies before expiry.
