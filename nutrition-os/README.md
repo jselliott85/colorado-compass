@@ -14,16 +14,16 @@ On October 26, 2026, the user reported Scout verified the actual production work
 
 | Owner | Scope |
 | --- | --- |
-| Scout / ChatGPT | Food log, nutrition targets, future training-plan adjustments, recommendations and weekly nutrition analysis |
-| Claude | Exclusive routine writer for completed Strava activities and their corrections in the existing Completed activities tab |
+| Scout / ChatGPT | Food log, completed activities from owner screenshots/descriptions/manual entries, nutrition targets, future training-plan adjustments, recommendations and weekly nutrition analysis |
+| Claude | No routine Completed activities writes; Strava MCP is not used |
 | Codex | Repository, schema, coordinated migrations, Garmin body-metric integration, formulas, native Dashboard and minimal infrastructure |
 | Google Sheets | One persistent workbook, calculated summaries and charts |
 
-The user activated official Strava MCP in Claude. That connection establishes an available integration route, not automatic permission for every downstream use. Real ingestion remains gated on the policy/permission review and Claude's actual field-availability report. Codex must not run a second routine activity importer, create a separate Strava API client, or import actual Strava records. Explicitly coordinated schema migrations or synthetic tests are exceptions to routine ownership. Scout may adjust future plans; it must not write completed activities. Garmin activity ingestion stays disabled.
+On October 29, 2026, the owner authorized and enabled Strava MCP; Claude validated the field mapping and corrected three existing screenshot rows with MCP values. The owner reversed that decision the same day: unattended automation would require a scheduled cloud agent, which the owner declined, and storage compliance remains unconfirmed under support ticket #19194. Strava MCP is not used for Nutrition OS; `Settings.strava_status` is disabled. The owner is handling connector disconnection in claude.ai; completion has not been verified here. Scout owns routine activity logging and corrections; Claude is no longer the activity writer. No Strava API client or replacement importer is authorized. Garmin activity ingestion stays disabled.
 
-See [CLAUDE_STRAVA.md](CLAUDE_STRAVA.md) for Claude's contract, [GARMIN_INTEGRATION.md](GARMIN_INTEGRATION.md) for the weight-only feasibility gates, and [INTEGRATION_REVIEW.md](INTEGRATION_REVIEW.md) for the live compatibility, Dashboard and reliability assessment. No credentials or additional services are required for this documentation update.
+See [CLAUDE_STRAVA.md](CLAUDE_STRAVA.md) for the inactive historical MCP contract, [GARMIN_INTEGRATION.md](GARMIN_INTEGRATION.md) for the weight-only feasibility gates, and [INTEGRATION_REVIEW.md](INTEGRATION_REVIEW.md) for the live compatibility, Dashboard and reliability assessment. No credentials or additional services are required for this documentation update.
 
-Scout's first live weekly screenshot import is now verified: seven prescribed workouts and seven corresponding dated nutrition targets for October 26–November 1, with all seven target sets retrieved by Daily summary. These are production records; do not rerun the blank-workbook builder or synthetic cleanup over them. Scout manages the working plan and targets conversationally. Preserve original coach-plan date/context when moving a workout. Optional sessions do not automatically activate long-ride targets. An optional/committed schema field is a future coordinated revision, not an implicit v1.0 change. Strava remains disabled pending the MCP storage-permission question.
+Scout's first live weekly screenshot import is now verified: seven prescribed workouts and seven corresponding dated nutrition targets for October 26–November 1, with all seven target sets retrieved by Daily summary. These are production records; do not rerun the blank-workbook builder or synthetic cleanup over them. Scout manages the working plan and targets conversationally. Preserve original coach-plan date/context when moving a workout. Optional sessions do not automatically activate long-ride targets. An optional/committed schema field is a future coordinated revision, not an implicit v1.0 change. Strava MCP is not used; Scout logs completed activities from screenshots and descriptions.
 
 The user confirmed Garmin Personal API Key access. The first-read setup is in [GARMIN_SETUP.md](GARMIN_SETUP.md): a recommended 30-day pilot key stored locally in Keychain, a prepared weight-only validator, and no Sheet writes or recurring ingestion before measurement validation.
 
@@ -36,7 +36,7 @@ Garmin authentication and an actual historical Index S2 measurement are validate
 | 1 | Dashboard | Formula view for a selected Denver date, macros and targets |
 | 2 | Food log | Scout's canonical meal rows, stable IDs and provenance |
 | 3 | Daily nutrition targets | Optional date-specific overrides with stable IDs |
-| 4 | Completed activities | Claude exclusively writes routine Strava imports/corrections after gates clear |
+| 4 | Completed activities | Scout writes screenshots, descriptions and manual entries; no Strava MCP |
 | 5 | Planned workouts | Scout manages future coach plans; automated TrainingPeaks integration deferred |
 | 6 | Body metrics | Codex owns subsequent Garmin weight integration; no Garmin workouts |
 | 7 | Daily summary | Prepared calendar and food formulas; only day_confirmation is editable |
@@ -53,7 +53,7 @@ Daily summary M is an optional explicit `complete` confirmation supplied by the 
 
 ## Scout handoff
 
-Use [SCOUT_LOGGING.md](SCOUT_LOGGING.md) v1.0 unchanged for food write/readback/retry behavior. Workbook validation and duplicate highlighting are safeguards, not atomic uniqueness or concurrency locks. Use one writer and one pending mutation per source tab. Scout and Claude can work in separate tabs, but must not sort/restructure tabs or overwrite shared Settings blocks during another owner's operation. Coordinate migrations with all owners idle. Users can edit targets; routine food edits go through Scout, completed activity edits through Claude.
+Use [SCOUT_LOGGING.md](SCOUT_LOGGING.md) v1.0 for preserved food write/readback/retry behavior and the October 29 manual activity handoff. Workbook validation and duplicate highlighting are safeguards, not atomic uniqueness or concurrency locks. Use one writer and one pending mutation per source tab. Do not sort/restructure tabs or overwrite shared Settings blocks during another owner's operation. Coordinate migrations with all owners idle. Users can edit targets; routine food edits go through Scout, completed activity edits through Scout.
 
 ## Authoring and privacy
 

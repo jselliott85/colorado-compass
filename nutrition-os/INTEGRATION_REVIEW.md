@@ -4,16 +4,18 @@ October 26, 2026. Branch: nutrition-os/phase-1-foundation. Read-only production 
 
 ## Evidence
 
-Latest production-plan update: read-only verification found seven populated planned-workout rows and seven corresponding target rows for October 26–November 1. Each day's four target values exactly matched Daily summary, and the Dashboard's current-day target cells matched that summary. No workbook writes were made. Weekly screenshot imports and conversational adjustments are Scout-owned. Preserve original prescribed context when moving sessions; optional sessions must not automatically activate long-ride targets. Do not add an optional/committed column without coordination. Native weight charts remain deferred until Garmin measurement identity/units are validated; Strava stays disabled pending the storage-permission gate.
+October 29, 2026 reversal update (supersedes the historical permission/mapping holds below): On October 29, 2026, the owner authorized and enabled Strava MCP; Claude validated the field mapping and corrected three existing screenshot rows with MCP values. The owner reversed that decision the same day: unattended automation would require a scheduled cloud agent, which the owner declined, and storage compliance remains unconfirmed under support ticket #19194. Strava MCP is not used for Nutrition OS; `Settings.strava_status` is disabled. The owner is handling connector disconnection in claude.ai; completion has not been verified here. Codex changed only Settings!B12:C12 for the reversal, including the B12 decision note; D12 and other Settings cells were preserved. Scout owns activity corrections. The three MCP-overwritten rows remain at revision 2 pending Scout’s screenshot restoration to revision 3; the manual walk is untouched.
+
+Historical October 26 production-plan review: read-only verification found seven populated planned-workout rows and seven corresponding target rows for October 26–November 1. Each day's four target values exactly matched Daily summary, and the Dashboard's current-day target cells matched that summary. No workbook writes were made. Weekly screenshot imports and conversational adjustments are Scout-owned. Preserve original prescribed context when moving sessions; optional sessions must not automatically activate long-ride targets. Do not add an optional/committed column without coordination. Native weight charts remain deferred until Garmin measurement identity/units are validated; Strava stays disabled pending the storage-permission gate.
 
 - **User-reported production execution:** Scout created/read/corrected synthetic meals, incremented revisions, reconciled retries, verified daily recalculation, voided/excluded meals and cleaned fixtures. The user verified Food log empty. This supersedes the earlier unexecuted basic Scout acceptance items in the historical Phase 1 validation record.
 - **Verified here through execution:** production metadata still has nine ordered tabs, Dashboard first and America/Denver timezone. Completed activities A1:S1 and Body metrics A1:R1 exactly match schema.json v1.0. Read header/validation metadata and Dashboard formulas. Scanned 4,786 formulas across Dashboard, Daily summary and Weekly summary: none reference Completed activities or Body metrics.
 - **Verified in current official Garmin documentation:** Personal authentication, weight endpoints and embedded OpenAPI DTO properties. See GARMIN_INTEGRATION.md for evidence and unresolved units/identity.
-- **Unverified:** Claude's actual Strava MCP field availability/permissions, real Garmin account payload, scheduled Google authorization and physical mobile-device behavior. No new real data was imported or ingested for this review.
+- **Historical unverified items at October 26:** MCP fields, Garmin payload, scheduled Google authorization and physical mobile behavior. Claude subsequently validated the MCP mapping on October 29; that mapping is now inactive historical reference in CLAUDE_STRAVA.md. No real activity data was imported by Codex for this review.
 
-## Completed activities compatibility
+## Historical MCP compatibility review (inactive)
 
-The existing tab provides 2,000 input rows, text activity IDs, date/number formats, header freeze, strict input validation and duplicate-ID highlighting. It has no activity operation_id or source-update timestamp column. Do not add either speculatively: exact Strava ID, persisted payload, local revision and updated_at_utc can support a serialized writer once source behavior is verified. Existing status options are active/void. source/source_id are separate provenance fields; use strava and the exact original ID, respectively.
+The existing tab provides 2,000 input rows, text activity IDs, date/number formats, header freeze, strict input validation and duplicate-ID highlighting. It has no activity operation_id or source-update timestamp column. Do not add either speculatively: exact Strava ID, persisted payload, local revision and updated_at_utc can support a serialized writer once source behavior is verified. Existing status options are active/void. The former MCP writer used source=strava and the exact original source_id. Current Scout screenshot/manual provenance follows SCOUT_LOGGING.md, with source=user and a genuine source reference where available.
 
 | Existing columns | Mapping decision |
 | --- | --- |
@@ -25,9 +27,9 @@ The existing tab provides 2,000 input rows, text activity IDs, date/number forma
 | average_hr_bpm, average_power_w, energy_kj, power_method | Optional; field availability, units and power provenance require Claude's report. |
 | source, recorded_at_utc, updated_at_utc, revision, status, correction_reason | Writer-generated metadata governed by CLAUDE_STRAVA.md, not presumed MCP fields. |
 
-**Assessment:** the schema is structurally suitable for a normalized completed activity; direct MCP mapping is not yet verified. No payload-driven migration is justified yet. Ask Claude for field names/types, nulls, exact ID representation, start/timezone semantics, units, list-versus-detail differences, pagination/completeness and edit/delete visibility. A redacted field report is enough; no real activity payload belongs in git. Codex does not contact Claude or become a second activity writer as part of this assignment.
+**Historical October 26 assessment:** the schema is structurally suitable for a normalized completed activity; direct MCP mapping was not yet verified at that review. The October 29 mapping is now validated but inactive; Scout screenshot/manual logging is the active path. No payload-driven migration is justified yet. The review requested field names/types, nulls, exact ID representation, start/timezone semantics, units, list-versus-detail differences, pagination/completeness and edit/delete visibility; Claude’s later mapping is retained as inactive history. A redacted field report is enough; no real activity payload belongs in git. Codex does not contact Claude or become a second activity writer as part of this assignment.
 
-The live Settings strava_status remains disabled, consistent with the pending gate. Claude's MCP activation does not authorize Codex to flip that state. Coordinate a narrow state update only after policy/permission and mapping acceptance. Separately resolve whether Scout may read the stored activity records or derived training context. Storage and downstream use remain separate questions.
+At the October 26 review, Settings.strava_status was disabled. It was briefly enabled on October 29 and disabled again that day by explicit owner reversal. Scout is the routine Completed activities writer; Claude must not resume MCP reconciliation.
 
 ## Mobile Dashboard assessment
 
@@ -45,18 +47,18 @@ Small next Dashboard changes, once coordinated:
 1. Show remaining grams next to or below the existing four nutrient rows. Calculate target minus logged only when both values are numeric; preserve negatives as over-target, not clamped zero. Leave unknown/unset values blank. Keep this inside the existing narrow view rather than widening for a fourth column.
 2. When weight data is validated, define one daily representative reading (proposed: latest valid exact-time reading per Denver day; review date-only ties). Use daily representatives for a compact seven-day trend, avoiding over-weighting days with multiple weigh-ins. Display sample-day coverage and last measurement date.
 3. Label weekly change precisely: proposed latest seven-day mean minus preceding seven-day mean, with negative meaning weight loss. Show each window's valid-day count, incomplete coverage and blank when either window has no observations. Do not compare a weekly average with an arbitrarily selected single weigh-in or invent a goal pace. Confirm this rolling-window definition with Scout before formula changes.
-4. After Claude's mapping and downstream-use gate, add a compact selected-day sport/duration context with source freshness/coverage. A missing activity is unknown until the import window is confirmed complete; it is not automatically a rest day. Use future plans as separately labelled context only.
+4. After validating Scout’s manual activity reporting coverage, consider a compact selected-day sport/duration context with source freshness/coverage. A missing activity is unknown until the import window is confirmed complete; it is not automatically a rest day. Use future plans as separately labelled context only.
 
 These are scoped recommendations, not unannounced production formula changes. Existing schema and dependencies remain intact.
 
 ## Scout reliability review: v1.0 preserved
 
-SCOUT_LOGGING.md is byte-for-byte unchanged. Its existing stable-ID, revision, precision and readback requirements remain authoritative. No demonstrated failure calls for Apps Script or a locking service.
+The food contract’s stable-ID, revision, precision and readback requirements remain authoritative. SCOUT_LOGGING.md now also documents Scout’s restored activity ownership and the October 29 correction handoff. No demonstrated failure calls for Apps Script or a locking service.
 
 | Edge case | Narrow operational recommendation under v1.0 |
 | --- | --- |
 | Lost response | Re-read by the same meal/operation IDs. Identical payload is success; newer/different state is a conflict. A stale retry must not overwrite a later correction. Failure to update last-write freshness never justifies appending the meal again. |
-| Concurrent food requests | Keep one Scout food writer and one pending mutation. Claude's separate activity tab does not serialize two Scout chats. Keep source-tab operations separate and avoid global sorts or shared-block Settings writes. |
+| Concurrent food requests | Keep one Scout food writer and one pending mutation. Scout owns both Food log and Completed activities; neither tab serializes two Scout chats. Keep source-tab operations separate and avoid global sorts or shared-block Settings writes. |
 | Date-only/backdated meals | Date-only stays a real local date with no invented UTC instant. Use intended consumption date, not logging date. Check that backdated/future date is inside the prepared summary calendar before claiming Dashboard coverage. |
 | Denver midnight/DST | Use America/Denver IANA conversion from an offset-aware instant. Repeated/ambiguous clock times need offset or reduced precision; nonexistent spring clock times need clarification. No fixed UTC offset or automatic UTC midnight for date-only meals. |
 | Complete-day invalidation | Treat mutation plus clearing confirmation as one planned batch where possible; include both dates when moving a meal. After any uncertain response, verify both the meal and relevant confirmation cells before confirming. Fresh read and serialization still apply. This operational batching needs no new column or contract version. |
@@ -67,7 +69,7 @@ Highest-value remaining controlled tests: lost-response reconciliation after a l
 
 ## Next handoffs
 
-1. Claude supplies its MCP field report and confirms the policy/permission gate for the actual data flow; it then remains the only routine activity writer.
+1. Scout restores the three MCP-overwritten activity rows from owner screenshots under SCOUT_LOGGING.md, with revision 3, preserved IDs/creation timestamps and independent full-row readback. Claude is no longer the activity writer; its validated MCP mapping is inactive.
 2. Codex coordinates a private Garmin sample/normalization validation, including exact identity and units, before any Body metrics importer or daily schedule.
 3. Scout retains v1.0 food logging and confirms weight-progress semantics. Coordinate only the narrow Dashboard formula additions after validated sources exist.
 

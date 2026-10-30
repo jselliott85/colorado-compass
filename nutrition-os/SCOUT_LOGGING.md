@@ -28,3 +28,24 @@ Before confirming a day complete, obtain explicit user confirmation and check al
 ## Live acceptance checks
 
 Use synthetic data with an obvious synthetic source. Verify one append, exact readback, in-place correction, retry with unchanged IDs, void and cleanup; exactly one canonical row must remain through retries. Verify a backdated meal, local midnight, DST, a date-only report, missing versus zero macros, date-specific targets, and complete-day invalidation. Run simultaneous-chat and lost-response tests as controlled scenarios before permitting concurrent use. Do not use real health data as fixtures or put it in source control. Leave the live foundation empty after synthetic tests.
+
+
+## Completed activities: Scout ownership restored October 29, 2026
+
+Scout is the sole routine writer for Completed activities from the owner's screenshots, descriptions and manual entries. Strava MCP is not used. Read live metadata, A1:S1 headers and validation before activity writes; preserve the existing schema. Do not use the food-specific operation_id or time_precision fields in this tab, which has neither column.
+
+Use one serialized activity writer and compare exact text activity IDs across A2:A2001 before writing. Preserve an existing activity_id even when it is a Strava ID: it is identity/reference, not proof of MCP provenance. For a new manual activity, generate one stable UUID and reuse it on retry; check for an existing screenshot/manual entry before adding a duplicate. Store the owner-provided local date as a numeric Denver date; write a UTC start only when the supplied time and timezone establish it. Missing time/metrics stay blank; clarify ambiguous times rather than inventing precision. Durations are seconds, distance meters, calories nutritional kcal, HR bpm, power watts and mechanical energy kJ. Never infer kcal from mechanical kJ or automatically credit activity calories to nutrition targets.
+
+Use source=user for owner screenshots/descriptions/manual entries; retain a genuine source reference when available and never invent one. Preserve explicit zeros and distinguish them from missing values. Screenshot values must be visible or owner-confirmed; use the owner's original evidence, not the overwritten MCP row, to restore them. Do not assume moving duration equals elapsed duration or infer power provenance.
+
+### Pending screenshot correction handoff
+
+The owner reports that Claude replaced three Scout screenshot rows with MCP values on October 29, moving each to revision 2. Codex verified their exact IDs and revision 2 in the live Sheet and left all activity rows untouched. Scout must locate these by exact activity_id (row numbers are current hints only): rows 2, 3 and 5. Use the owner's handoff for the three IDs; do not put personal activity IDs or screenshot payloads in git.
+
+For each row, restore values from the original owner screenshot in place, retain the same activity_id and original recorded_at_utc, set revision=3 and a fresh updated_at_utc, and use this exact correction_reason:
+
+`Replaced Strava MCP values with screenshot values; MCP not used`
+
+Read the full current row first and require revision 2 before this correction. If already at revision 3 with the intended values/reason, verify and treat as a successful no-op; do not increment again. A different/newer revision is a conflict to resolve. If the original screenshot is unavailable, ask the owner for it rather than reconstructing the lost values. Leave row 4 (the manual walk, source=user) untouched.
+
+After each correction, independently read back the complete A:S row, compare every intended value including provenance, revision and preserved creation timestamp, and confirm exactly one matching activity ID. Report corrected only after verification. Never delete/reappend these rows or replace their identities. Claude and Codex must not perform these screenshot corrections.
