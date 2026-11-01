@@ -35,19 +35,20 @@ class ValidationTests(unittest.TestCase):
         repeat = g.normalize_index_s2(raw, observed_at_utc="2026-10-27T18:00:00Z")
         self.assertEqual(g.reconcile_measurement([first], repeat)[0], "noop")
         changed = dict(repeat, weight_kg=76)
-        with self.assertRaises(g.ValidationError):
-            g.reconcile_measurement([first], changed)
+        self.assertEqual(g.reconcile_measurement([first], changed), ("noop", first))
         with self.assertRaises(g.ValidationError):
             g.reconcile_measurement([first, first], repeat)
         with self.assertRaises(g.ValidationError):
             g.normalize_index_s2(dict(raw, samplePk=None), observed_at_utc="2026-10-26T18:00:00Z")
 
-    def test_missing_and_explicit_zero_metrics(self):
-        raw = {"samplePk": 123, "sourceType": "INDEX_SCALE", "timestampGMT": 1793016000000, "weight": 75000, "bodyFat": 0, "bodyWater": None}
+    def test_zero_composition_is_missing_but_raw_evidence_is_preserved(self):
+        raw = {"samplePk": 123, "sourceType": "INDEX_SCALE", "timestampGMT": 1793016000000, "weight": 75000,
+               "bodyFat": 0, "bodyWater": 0, "muscleMass": 0, "boneMass": 0}
         row = g.normalize_index_s2(raw, observed_at_utc="2026-10-26T18:00:00Z")
-        self.assertEqual(row["body_fat_pct"], 0)
-        self.assertIsNone(row["body_water_pct"])
-        self.assertIsNone(row["muscle_mass_kg"])
+        self.assertEqual(row["weight_kg"], 75)
+        for field in ("body_fat_pct", "body_water_pct", "muscle_mass_kg", "bone_mass_kg"):
+            self.assertIsNone(row[field])
+        self.assertEqual(json.loads(row["source_record_json"]), raw)
 
     def test_empty_window_not_successful_measurement_validation(self):
         report = g.inspect_records([])

@@ -1,10 +1,10 @@
-# Body-metric profile garmin-index-s2/1.0
+# Body-metric profile garmin-index-s2/1.1
 
 This version is independent of Settings.schema_version=1.0 and Scout's food-logging contract v1.0. Neither shared configuration nor Food log headers were changed. Scout added and verified Body metrics S=bmi and T=source_record_json before the approved real-record test. A:R retain their original names, order and semantics.
 
 ## Source and normalization
 
-The profile applies to the personally validated Garmin Index S2 account response, not every Garmin product or API version. Use actual samplePk as exact text source_id, source=garmin_personal_api, and a local garmin:<samplePk> namespace for measurement_id. Never fabricate a Garmin source ID. Missing IDs, non-Index provenance, conflicting existing source records or duplicate source IDs stop for review.
+The profile applies to the personally validated Garmin Index S2 account response, not every Garmin product or API version. Use actual samplePk as exact text source_id, source=garmin_personal_api, and a local garmin:<samplePk> namespace for measurement_id. Never fabricate a Garmin source ID. Missing IDs, non-Index provenance for new records, colliding identities or duplicate existing source IDs stop for review. Routine sync inserts only unseen source IDs. Existing records are left intact even if later provider values differ or the owner has cleared metrics/voided a record; they do not block new IDs.
 
 | Wire field | Stored field/unit | Interpretation |
 | --- | --- | --- |
@@ -17,7 +17,7 @@ The profile applies to the personally validated Garmin Index S2 account response
 | timestampGMT, integer Unix ms | measured_at_utc, ISO UTC | Authoritative source instant; derive local_date in America/Denver including DST |
 | samplePk, sourceType, all original fields | source_id, device/source metadata, source_record_json | Exact original identity, timestamps, local calendar context and nullable metrics preserved |
 
-The provider JSON is stored literally as text, not executed as a formula. It contains the original individual measurement, never API keys, bearer-token responses or headers. Null optional fields remain blank in canonical cells and null in raw JSON. Explicit zeros remain zero. Masses are not guessed from magnitude. See GARMIN_VALIDATION_RESULTS.md for the differences between observed payloads and the published API schema, and the provider's muscle/impedance caveats.
+The provider JSON is stored literally as text, not executed as a formula. It contains the original individual measurement, never API keys, bearer-token responses or headers. Null optional fields remain blank in canonical cells and null in raw JSON. For the four body-composition fields (bodyFat, bodyWater, muscleMass, boneMass), the owner confirmed zero means a failed reading. Profile 1.1 stores those zeros as blank canonical cells while retaining zeros in source_record_json. Positive weight is kept even when composition fails. Do not replace missing composition with zero or infer it from other readings. Masses are not guessed from magnitude. See GARMIN_VALIDATION_RESULTS.md for the differences between observed payloads and the published API schema, and the provider's muscle/impedance caveats.
 
 ## Approved one-real-record test: October 26, 2026
 
@@ -31,4 +31,8 @@ Raw source data, the normalized staging record and readback evidence remain in i
 
 ## Operational boundary
 
-This was one explicitly approved import/reconciliation test through the existing authorized connector. It did not create Google authorization, activate a schedule, import history in bulk or call Garmin workout APIs. The separately approved hosted authorization is documented in DAILY_SYNC_SETUP.md; scheduling status and validation are recorded there. Provider-key expiry must still be confirmed in Connect. Daily retries must perform the same exact-ID reconciliation; a changed source record is a reviewable correction, not permission to overwrite arbitrary existing rows.
+This was one explicitly approved import/reconciliation test through the existing authorized connector. It did not create Google authorization, activate a schedule, import history in bulk or call Garmin workout APIs. The separately approved hosted authorization is documented in DAILY_SYNC_SETUP.md; scheduling status and validation are recorded there. Provider-key expiry must still be confirmed in Connect. Daily retries match exact source IDs and skip existing records without refilling blanks or failing on provider metric differences. Any future requested correction is a separate owner-directed, revisioned operation, not part of routine sync.
+
+## November 1, 2026 owner decision and zero-reading repair
+
+The prior conflict error came from owner-cleared composition cells differing from Garmin zeros. Restoring zeros was incorrect for charting and was reversed: the two affected records retain valid weight and literal raw source JSON, with four composition cells blanked and revision/correction metadata updated. Chart helpers now require positive values, so blanks and legacy zeros produce gaps. The seven-day lookback remains to catch missed new IDs; existing records are not refreshed or automatically corrected. The shared Settings schema stays 1.0; only this normalization profile advances to 1.1.

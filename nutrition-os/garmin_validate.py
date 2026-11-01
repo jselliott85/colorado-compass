@@ -21,7 +21,7 @@ BASE = "https://personal.connectapi.garmin.com"
 TOKEN_PATH = "/personalapitoken-service/personal-api/personal-api-key/token"
 SERVICE = "nutrition-os.garmin.personal-api"
 ACCOUNT = "nutrition-os"
-BODY_METRIC_PROFILE_VERSION = "garmin-index-s2/1.0"
+BODY_METRIC_PROFILE_VERSION = "garmin-index-s2/1.1"
 PRIVATE_DIR = Path(__file__).resolve().parent / "local" / "garmin"
 
 
@@ -132,7 +132,8 @@ def inspect_records(records):
 def normalize_index_s2(record, *, observed_at_utc):
     """Account profile confirmed against Connect. Stages data; never writes Sheets.
 
-    Profile garmin-index-s2/1.0: grams; percentages in 0..100; UTC Unix ms.
+    Profile garmin-index-s2/1.1: grams; positive body composition; UTC Unix ms.
+    Zero body-composition values indicate failed readings and become blanks.
     Do not apply this profile to a different account/provider without validation.
     """
     source_id = record.get("samplePk")
@@ -141,7 +142,7 @@ def normalize_index_s2(record, *, observed_at_utc):
     if record.get("sourceType") != "INDEX_SCALE":
         raise ValidationError("Unverified non-Index record excluded from the Index S2 profile.")
     instant = parse_instant(record.get("timestampGMT"), encoding="unix_ms")
-    def optional_number(key, *, percentage=False, mass=False):
+    def optional_number(key, *, percentage=False, mass=False, zero_is_missing=False):
         value = record.get(key)
         if value is None:
             return None
@@ -149,15 +150,17 @@ def normalize_index_s2(record, *, observed_at_utc):
             raise ValidationError("Invalid body metric; do not replace it with zero.")
         if percentage and value > 100:
             raise ValidationError("Percentage outside validated 0..100 units.")
+        if zero_is_missing and value == 0:
+            return None
         return value / 1000 if mass else value
     return {
         "measurement_id": "garmin:" + str(source_id),  # Local namespace, not a fabricated Garmin ID.
         "local_date": instant.astimezone(ZoneInfo("America/Denver")).date().isoformat(),
         "weight_kg": weight_to_kg(record.get("weight"), "g"),
-        "body_fat_pct": optional_number("bodyFat", percentage=True),
-        "body_water_pct": optional_number("bodyWater", percentage=True),
-        "muscle_mass_kg": optional_number("muscleMass", mass=True),
-        "bone_mass_kg": optional_number("boneMass", mass=True),
+        "body_fat_pct": optional_number("bodyFat", percentage=True, zero_is_missing=True),
+        "body_water_pct": optional_number("bodyWater", percentage=True, zero_is_missing=True),
+        "muscle_mass_kg": optional_number("muscleMass", mass=True, zero_is_missing=True),
+        "bone_mass_kg": optional_number("boneMass", mass=True, zero_is_missing=True),
         "measured_at_utc": instant.isoformat(timespec="milliseconds").replace("+00:00", "Z"),
         "time_precision": "exact",
         "measurement_method": "scale_weight;bioimpedance_estimates",
@@ -175,7 +178,7 @@ def normalize_index_s2(record, *, observed_at_utc):
 
 
 def reconcile_measurement(existing, candidate):
-    """Plan an upsert by real source ID. No I/O, deletion or blanket overwrites."""
+    """Insert unseen source IDs only; existing records remain owner-controlled."""
     matches = [r for r in existing if r.get("source") == candidate["source"] and r.get("source_id") == candidate["source_id"]]
     if len(matches) > 1:
         raise ValidationError("Duplicate source IDs already exist; stop for review.")
@@ -183,11 +186,9 @@ def reconcile_measurement(existing, candidate):
         if any(r.get("measurement_id") == candidate["measurement_id"] for r in existing):
             raise ValidationError("Local measurement ID collides with another source.")
         return "insert", candidate
-    old = matches[0]
-    ignored = {"recorded_at_utc", "updated_at_utc", "revision", "correction_reason", "measurement_id"}
-    if all(old.get(k) == v for k, v in candidate.items() if k not in ignored):
-        return "noop", old
-    raise ValidationError("Source changed for an existing ID; coordinate correction rather than overwrite data.")
+    # A later provider response must not refill owner-cleared invalid readings,
+    # overwrite corrections, reactivate voids, or prevent importing new IDs.
+    return "noop", matches[0]
 
 
 def measurement_records(payload):

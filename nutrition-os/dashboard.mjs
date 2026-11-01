@@ -43,7 +43,7 @@ export function dashboardRequests(properties, {inputLastRow=2001, dailyLastRow=3
   ['Date','source_row_index','Daily weight (lb)','7-day average (lb)','Body fat (%)','Estimated muscle (lb)'].forEach((v,i)=>set(1,4+i,v));
   repeat(2,85,4,'=$B$4-83+ROW()-2');
   repeat(2,85,5,`=IF(COUNTIFS($N$2:$N$${inputLastRow},E2)=0,"",MATCH(E2&"|"&MAXIFS($O$2:$O$${inputLastRow},$N$2:$N$${inputLastRow},E2),$P$2:$P$${inputLastRow},0))`);
-  const metric=(src,convert='')=>`=IF(F2="","",IF(ISNUMBER(INDEX(${body(src)},F2)),INDEX(${body(src)},F2)${convert},""))`;
+  const metric=(src,convert='')=>`=IF(F2="","",IF(AND(ISNUMBER(INDEX(${body(src)},F2)),INDEX(${body(src)},F2)>0),INDEX(${body(src)},F2)${convert},""))`;
   repeat(2,85,6,metric('C','/0.45359237'));
   repeat(2,85,7,`=IF(G2="","",${average(`${dates},">="&E2-6,${dates},"<="&E2`)})`);
   repeat(2,85,8,metric('D'));

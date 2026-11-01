@@ -95,8 +95,34 @@ class SyncTests(unittest.TestCase):
         sheet = FakeSheet()
         self.run_sync(sheet, [self.raw()])
         changed = dict(self.raw(), weight=76000)
-        with self.assertRaises(s.SyncError):
-            self.run_sync(sheet, [changed])
+        old = copy.deepcopy(sheet.entries)
+        self.assertEqual(self.run_sync(sheet, [changed])["noop"], 1)
+        self.assertEqual(sheet.writes, 1)
+        self.assertEqual(sheet.entries, old)
+
+    def test_owner_blanks_and_void_are_preserved_while_new_ids_import(self):
+        sheet = FakeSheet()
+        self.run_sync(sheet, [self.raw()])
+        existing = sheet.entries[0][1]
+        existing.update(body_fat_pct=None, revision=3, status="void", correction_reason="Owner excluded invalid reading")
+        old = copy.deepcopy(existing)
+        # Even a later malformed metric for a known ID is irrelevant: only new
+        # source IDs are normalized/imported by routine runs.
+        result = self.run_sync(sheet, [dict(self.raw(), weight=None), self.raw(identifier=124)])
+        self.assertEqual(result, {"inserted": 1, "noop": 1, "verified_writes": 0})
+        self.assertEqual(sheet.entries[0][1], old)
+        self.assertEqual(sheet.writes, 2)
+
+    def test_zero_composition_import_stays_blank_on_repeat(self):
+        raw = dict(self.raw(), bodyFat=0, bodyWater=0, muscleMass=0, boneMass=0)
+        sheet = FakeSheet()
+        self.run_sync(sheet, [raw])
+        first = copy.deepcopy(sheet.entries)
+        self.assertEqual(first[0][1]["weight_kg"], 75)
+        for field in ("body_fat_pct", "body_water_pct", "muscle_mass_kg", "bone_mass_kg"):
+            self.assertIsNone(first[0][1][field])
+        self.assertEqual(self.run_sync(sheet, [raw])["noop"], 1)
+        self.assertEqual(sheet.entries, first)
         self.assertEqual(sheet.writes, 1)
 
     def test_explicit_validation_write_preserves_existing_metadata(self):

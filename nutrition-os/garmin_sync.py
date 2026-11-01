@@ -133,7 +133,7 @@ def reconcile(entries, candidate):
     try:
         return garmin.reconcile_measurement([r for _, r in entries], candidate)
     except garmin.ValidationError:
-        raise SyncError("source_conflict: duplicate/changed/missing identity requires review; no row was overwritten") from None
+        raise SyncError("source_conflict: duplicate/colliding identity requires review; no row was overwritten") from None
 
 
 def readback(sheet, candidate):
@@ -153,8 +153,17 @@ def synchronize(sheet, records, start, end, now, *, verify_existing_write=False)
     identities = [(r.get("source"), r.get("source_id")) for _, r in initial if r.get("source") == SOURCE]
     if len(identities) != len(set(identities)):
         raise SyncError("source_conflict: duplicate existing Garmin IDs require review")
+    known = {r["source_id"]: r for _, r in initial if r.get("source") == SOURCE}
     candidates = {}
     for raw in records:
+        source_id = raw.get("samplePk")
+        if (not isinstance(source_id, bool) and isinstance(source_id, (str, int))
+                and str(source_id).isdigit() and raw.get("sourceType") == "INDEX_SCALE"
+                and str(source_id) in known):
+            # Existing IDs are owner-controlled. Do not revalidate/refill their
+            # metrics from later provider payloads; still re-read their row below.
+            candidates[str(source_id)] = known[str(source_id)]
+            continue
         try:
             row = garmin.normalize_index_s2(raw, observed_at_utc=observed)
         except garmin.ValidationError:

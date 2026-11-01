@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "body_metric_profile_version": "garmin-index-s2/1.0",
+  "body_metric_profile_version": "garmin-index-s2/1.1",
   "timezone": "America/Denver",
   "input_last_row": 2001,
   "summary_days": 366,
