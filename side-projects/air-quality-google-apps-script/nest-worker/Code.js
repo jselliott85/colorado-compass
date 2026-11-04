@@ -95,6 +95,9 @@ function nestUpsert_(name, headers, rows) {
   if (!rows.length) return;
   const sheet = nestSheet_(name, headers), current = nestRead_(name, headers), byKey = {};
   current.forEach(function(r, i) {
+    // Skip empty keys without compressing the array: i + 2 must still address
+    // the actual sheet row when updating records below a cleared row.
+    if (headers.every(function(h) { return nestCell_(r[h]) === ''; })) return;
     const key = r[headers[0]];
     if (byKey[key] && name !== 'Nest_Usage') throw new Error('Nest duplicate stored key');
     // Existing daily duplicates are retained; update the latest snapshot only, never sum them.
@@ -301,12 +304,17 @@ function runNestCollection() {
     attempt.completed_at_utc = nestIso_(Date.now());
     // Only static errors are persisted; never transport bodies, tokens, or arbitrary exceptions.
     if (locked) {
-      try {
-        nestUpsert_(NEST_HEALTH, NEST_HEALTH_HEADERS, [{run_id: run, started_at_utc: start, finished_at_utc: nestIso_(Date.now()), drained: false, snapshot_ok: false, status: 'error'}]);
-        nestStatus_('error', nestIso_(Date.now()), 'Nest collection/processing failed at ' + attempt.stage + ' (' + attempt.error_code + '); inspect attempt and platform history.');
-        nestUpsert_(NEST_ATTEMPTS, NEST_ATTEMPT_HEADERS, [attempt]);
-        SpreadsheetApp.flush();
-      } catch (reportError) { /* Pending record remains the fallback; stale timestamps are independently detectable. */ }
+      // Reporting destinations fail independently: a damaged health ledger must not
+      // hide a processing failure from Source_Status or the attempt ledger.
+      const reports = [
+        function() { nestUpsert_(NEST_HEALTH, NEST_HEALTH_HEADERS, [{run_id: run, started_at_utc: start, finished_at_utc: nestIso_(Date.now()), drained: false, snapshot_ok: false, status: 'error'}]); },
+        function() { nestStatus_('error', nestIso_(Date.now()), 'Nest collection/processing failed at ' + attempt.stage + ' (' + attempt.error_code + '); inspect attempt and platform history.'); },
+        function() { nestUpsert_(NEST_ATTEMPTS, NEST_ATTEMPT_HEADERS, [attempt]); }
+      ];
+      reports.forEach(function(report) {
+        try { report(); SpreadsheetApp.flush(); }
+        catch (reportError) { /* The deferred attempt remains an independent fallback. */ }
+      });
     }
     return {status: 'error', stage: attempt.stage};
   } finally {
@@ -326,6 +334,9 @@ function nestErrorCode_(error) {
   if (http) return 'http_' + http[1];
   if (message === 'Nest network unavailable') return 'network_unavailable';
   if (message === 'Nest token refresh failed') return 'token_refresh_failed';
+  if (message === 'Nest duplicate stored key') return 'duplicate_stored_key';
+  if (message === 'Nest conflicting stored observation') return 'conflicting_stored_observation';
+  if (message === 'Nest invalid stored observation') return 'invalid_stored_observation';
   if (/Service using too much computer time for one day/.test(message)) return 'platform_runtime_quota';
   if (/Service invoked too many times|Limit exceeded/.test(message)) return 'platform_service_limit';
   return 'processing_failed';
@@ -391,13 +402,23 @@ function nestPatchMaster_(rows) {
 }
 function nestTrim_(name, headers, timeField, days) {
   const sheet = nestSheet_(name, headers), rows = nestRead_(name, headers), cutoff = Date.now() - days * 86400000;
-  const retained = rows.filter(function(r) {
+  const keep = rows.map(function(r) {
     if (name === NEST_ATTEMPTS) return r.outcome === 'running' || Date.parse(r.completed_at_utc || r.started_at_utc) >= cutoff;
     return Date.parse(r[timeField]) >= cutoff;
   });
+  const retained = rows.filter(function(r, i) { return keep[i]; });
   if (retained.length === rows.length) return;
-  if (retained.length) sheet.getRange(2, 1, retained.length, headers.length).setValues(retained.map(function(r) { return headers.map(function(k) { return r[k] === null ? '' : r[k]; }); }));
-  sheet.getRange(retained.length + 2, 1, rows.length - retained.length, headers.length).clearContent();
+  // Never compact by copying retained rows over the old prefix and clearing a
+  // tail: termination between those writes leaves duplicate live keys. Delete
+  // only expired contiguous blocks, bottom first. Each completed deletion leaves
+  // the remaining rows valid, and a fresh invocation can safely retry.
+  if (nestExecution_) delete nestExecution_.rows[name];
+  for (let i = rows.length - 1; i >= 0;) {
+    if (keep[i]) { i -= 1; continue; }
+    const end = i;
+    while (i >= 0 && !keep[i]) i -= 1;
+    sheet.deleteRows(i + 3, end - i);
+  }
   nestCacheRows_(name, retained);
 }
 /** Private setup web app: deploy access=MYSELF, never ANYONE. Credential contents are never echoed. */

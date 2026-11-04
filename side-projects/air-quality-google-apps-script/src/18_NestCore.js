@@ -60,6 +60,10 @@ function nestAggregate_(observations, health, zones, start, end, ingestedAt, eve
   const first = Math.floor(Date.parse(start) / 900000) * 900000, last = Math.floor(Date.parse(end) / 900000) * 900000;
   const unique = {};
   observations.forEach(function(r) {
+    // A cleared spreadsheet row is not an observation. Preserve physical row
+    // positions in storage; exclude only wholly empty records from replay.
+    if (NEST_LEDGER_HEADERS.every(function(h) { return r[h] === null || r[h] === undefined || r[h] === ''; })) return;
+    if (typeof r.observation_id !== 'string' || !r.observation_id || typeof r.device_id !== 'string' || !r.device_id || !Number.isFinite(Date.parse(r.timestamp_utc)) || typeof r.traits_json !== 'string' || !r.traits_json) throw new Error('Nest invalid stored observation');
     const prior = unique[r.observation_id];
     if (prior && (prior.timestamp_utc !== r.timestamp_utc || prior.device_id !== r.device_id || prior.traits_json !== r.traits_json)) throw new Error('Nest conflicting duplicate');
     unique[r.observation_id] = r;

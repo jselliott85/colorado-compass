@@ -9,6 +9,7 @@ function fixture(options={}) {
  const tick=()=>{now+=options.tick||1;};
  function sheet(name,data=[]) {
   const s={data:data.map(r=>r.slice()),frozen:1,getLastRow(){return this.data.length;},getLastColumn(){return Math.max(0,...this.data.map(r=>r.length));},getMaxRows(){return 10000;},getMaxColumns(){return 50;},getFrozenRows(){return this.frozen;},setFrozenRows(n){this.frozen=n;},insertRowsAfter(){},insertColumnsAfter(){},
+   deleteRows(row,n){calls.push({op:'deleteRows',name,row,n});this.data.splice(row-1,n);if(options.afterDelete)options.afterDelete({name,row,n,s});},
    getRange(row,col,n=1,m=1){return {
     getValues(){tick();calls.push({op:'read',name,row,col,n,m});if(options.beforeRead)options.beforeRead({name,row,col,n,m,s});return Array.from({length:n},(_,i)=>Array.from({length:m},(_,j)=>s.data[row+i-1]?.[col+j-1]??''));},
     getDisplayValues(){return this.getValues().map(r=>r.map(v=>v instanceof Date?v.toISOString().slice(0,10):String(v)));},
@@ -109,4 +110,54 @@ test('diagnostic codes preserve HTTP/quota class without persisting arbitrary er
 });
 test('health batches defer the current checkpoint and retain previous finalized success for archive recovery',()=>{
  const f=fixture();f.c.runNestCollection();const first=pending(f)[0].run_id;f.advance(15*60000);f.c.runNestCollection();const batches=f.calls.filter(x=>x.op==='archive'&&x.name.startsWith('health-batch-'));assert.equal(batches.length,1);assert.equal(batches[0].payload.length,1);assert.equal(batches[0].payload[0].run_id,first);assert.equal(batches[0].payload[0].status,'success');
+});
+test('interrupted trimming preserves retained rows and retries safely after a committed deletion',()=>{
+ let interrupt=true;
+ const f=fixture({afterDelete:()=>{if(interrupt){interrupt=false;throw Error('simulated termination after deletion');}}});
+ const h=['run_id','finished_at_utc'],old='2026-10-10T00:00:00Z',recent='2026-10-20T12:00:00Z';
+ f.sheet('Nest_Collection_Health',[h,['old-a',old],['keep-a',recent],['old-b',old],['keep-b',recent],['old-c',old]]);
+ vm.runInContext('nestExecution_ = {sheets: {}, rows: {}}',f.c);
+ assert.throws(()=>f.c.nestTrim_('Nest_Collection_Health',h,'finished_at_utc',3),/simulated termination/);
+ assert.deepEqual(rows(f,'Nest_Collection_Health').map(r=>r.run_id),['old-a','keep-a','old-b','keep-b']);
+ f.c.nestTrim_('Nest_Collection_Health',h,'finished_at_utc',3);
+ assert.deepEqual(rows(f,'Nest_Collection_Health'),[{run_id:'keep-a',finished_at_utc:recent},{run_id:'keep-b',finished_at_utc:recent}]);
+ const mutations=f.calls.filter(x=>x.op==='deleteRows').length;
+ f.c.nestTrim_('Nest_Collection_Health',h,'finished_at_utc',3);
+ assert.equal(f.calls.filter(x=>x.op==='deleteRows').length,mutations);
+ assert.equal(f.calls.some(x=>x.op==='write'),false);
+});
+test('attempt trimming retains running records and removes only expired completed blocks',()=>{
+ const f=fixture(),h=['run_id','started_at_utc','completed_at_utc','outcome'];
+ f.sheet('Nest_Run_Attempts',[h,['old','2026-10-10T00:00:00Z','2026-10-10T00:01:00Z','success'],['running','2026-10-10T00:00:00Z','','running'],['recent','2026-10-20T12:00:00Z','2026-10-20T12:00:30Z','error']]);
+ f.c.nestTrim_('Nest_Run_Attempts',h,'started_at_utc',3);
+ assert.deepEqual(rows(f,'Nest_Run_Attempts').map(r=>r.run_id),['running','recent']);
+});
+test('duplicate health keys cannot suppress failure reporting or create analytical success',()=>{
+ const f=fixture({event:true}),h=vm.runInContext('NEST_HEALTH_HEADERS',f.c);
+ const checkpoint=['duplicate','2026-10-20T12:00:00Z','2026-10-20T12:00:30Z',true,true,'success'];
+ f.sheet('Nest_Collection_Health',[h,checkpoint,checkpoint.slice()]);
+ const before=JSON.stringify(f.tables.Nest_Collection_Health.data);
+ assert.equal(f.c.runNestCollection().status,'error');
+ assert.equal(rows(f,'Source_Status')[0].status,'error');
+ assert.match(rows(f,'Source_Status')[0].message,/duplicate_stored_key/);
+ assert.equal(rows(f,'Nest_Run_Attempts')[0].error_code,'duplicate_stored_key');
+ assert.equal(pending(f)[0].outcome,'error');
+ assert.equal(JSON.stringify(f.tables.Nest_Collection_Health.data),before);
+ assert.equal(rows(f,'Nest_15min').length,0);
+ assert.ok(rows(f,'Nest_Observations').length>0);
+ assert.ok(f.calls.some(x=>x.op==='acknowledge'));
+});
+test('empty ledger rows do not abort replay and upserts preserve physical row addresses',()=>{
+ const f=fixture(),h=vm.runInContext('NEST_LEDGER_HEADERS',f.c);
+ const observation={observation_id:'old',timestamp_utc:'2026-10-20T11:59:00Z',device_id:'device1',kind:'snapshot',traits_json:'{}',ingested_at_utc:'2026-10-20T11:59:00Z'};
+ f.sheet('Nest_Observations',[h,[],h.map(k=>observation[k]),[]]);
+ assert.equal(f.c.runNestCollection().status,'success');
+ assert.deepEqual(rows(f,'Nest_Observations').find(r=>r.observation_id==='old'),observation);
+ assert.equal(rows(f,'Nest_Observations').some(r=>!r.observation_id),false);
+ const g=fixture();g.sheet('Mock',[['key','value'],[],['keep',1],[]]);g.c.nestUpsert_('Mock',['key','value'],[{key:'keep',value:2}]);
+ assert.deepEqual(g.tables.Mock.data[2],['keep',2]);assert.equal(g.tables.Mock.data[1][0],undefined);
+});
+test('partially populated observations fail explicitly instead of being discarded as blank',()=>{
+ const f=fixture();assert.throws(()=>f.c.nestAggregate_([{timestamp_utc:'2026-10-20T12:00:00Z'}],[],{device1:'whole_house'},'2026-10-20T12:00:00Z','2026-10-20T12:15:00Z','2026-10-20T12:15:00Z',true),/invalid stored observation/);
+ assert.equal(f.c.nestErrorCode_(Error('Nest invalid stored observation')),'invalid_stored_observation');
 });
